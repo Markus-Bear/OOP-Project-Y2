@@ -74,4 +74,11 @@ public class User {
     public void setYear(Integer year) {
         this.year = year;
     }
+
+    public boolean isValid() {
+        return email != null && !email.isEmpty() &&
+                password != null && !password.isEmpty() &&
+                name != null && !name.isEmpty() &&
+                role != null && !role.isEmpty();
+    }
 }

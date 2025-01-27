@@ -17,7 +17,9 @@ public class Main {
             System.out.println("\nMenu:");
             System.out.println("1. View All Users");
             System.out.println("2. View All Equipment");
-            System.out.println("3. Exit");
+            System.out.println("3. Add New User");
+            System.out.println("4. Update User");
+            System.out.println("5. Exit");
             System.out.print("Enter your choice: ");
 
             int choice = scanner.nextInt();
@@ -26,7 +28,9 @@ public class Main {
             switch (choice) {
                 case 1 -> methodsUtil.displayAllUsers();
                 case 2 -> methodsUtil.displayAllEquipment();
-                case 3 -> {
+                case 3 -> methodsUtil.addNewUser(scanner);
+                case 4 -> methodsUtil.updateUser(scanner);
+                case 5 -> {
                     System.out.println("Exiting...");
                     return; // Exit the program
                 }
