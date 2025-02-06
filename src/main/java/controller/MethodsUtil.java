@@ -180,6 +180,21 @@ public class MethodsUtil {
         }
     }
 
+    //Deletes a users information
+    public void deleteUser(Scanner scanner) {
+        System.out.println("\n=== Delete User ===");
+        System.out.print("Enter User ID to delete: ");
+        String userId = scanner.nextLine();
+        System.out.print("Enter Admin ID for verification: ");
+        String adminId = scanner.nextLine();
+
+        if (userController.deleteUser(userId, adminId)) {
+            System.out.println("User deleted successfully!");
+        } else {
+            System.out.println("Failed to delete user. Check admin permissions or user existence.");
+        }
+    }
+
     // Display all equipment
     public void displayAllEquipment(){
         System.out.println("\n========== All Equipment ==========");

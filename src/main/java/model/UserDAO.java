@@ -10,12 +10,12 @@ public class UserDAO {
 
     //Fetch all Users
     public List<User> getAllUsers() {
-        String query = "SELECT u.user_id, u.email, u.password, u.role, u.name, " +
+        String query = "SELECT u.user_id, u.email, u.role, u.name, " +
                 "s.course, s.department AS student_department, s.year, " +
                 "l.department AS lecturer_department " +
-                "FROM Users u " +
-                "LEFT JOIN Students s ON u.user_id = s.student_id " +
-                "LEFT JOIN Lecturers l ON u.user_id = l.lecturer_id";
+                "FROM users u " +
+                "LEFT JOIN students s ON u.user_id = s.student_id " +
+                "LEFT JOIN lecturers l ON u.user_id = l.lecturer_id";
 
         Connection conn = null;
         PreparedStatement stmt = null;
@@ -31,7 +31,6 @@ public class UserDAO {
                 User user = new User();
                 user.setUserId(rs.getString("user_id"));
                 user.setEmail(rs.getString("email"));
-                user.setPassword(rs.getString("password"));
                 user.setRole(rs.getString("role"));
                 user.setName(rs.getString("name"));
 
@@ -59,9 +58,9 @@ public class UserDAO {
         String query = "SELECT u.*, " +
                 "s.course, s.department AS student_department, s.year, " +
                 "l.department AS lecturer_department " +
-                "FROM Users u " +
-                "LEFT JOIN Students s ON u.user_id = s.student_id " +
-                "LEFT JOIN Lecturers l ON u.user_id = l.lecturer_id " +
+                "FROM users u " +
+                "LEFT JOIN students s ON u.user_id = s.student_id " +
+                "LEFT JOIN lecturers l ON u.user_id = l.lecturer_id " +
                 "WHERE u.user_id = ?";
 
         Connection conn = null;
@@ -201,6 +200,26 @@ public class UserDAO {
             } catch (Exception e) {
                 System.err.println("Resource cleanup error: " + e.getMessage());
             }
+        }
+    }
+
+    public boolean deleteUser(String userId, String requesterId) {
+        String sql = "{CALL DeleteUser(?, ?)}";
+        Connection conn = null;
+        CallableStatement stmt = null;
+
+        try {
+            conn = DatabaseConnection.getConnection();
+            stmt = conn.prepareCall(sql);
+            stmt.setString(1, userId);
+            stmt.setString(2, requesterId);
+            stmt.execute();
+            return true;
+        } catch (SQLException e) {
+            System.err.println("Database error deleting user: " + e.getMessage());
+            return false;
+        } finally {
+            DatabaseConnection.closeResources(conn, stmt, null);
         }
     }
 }

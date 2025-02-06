@@ -1,15 +1,9 @@
 package view;
 
-
 import controller.MethodsUtil;
-
-
 import java.util.Scanner;
 
 public class Main {
-
-
-
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         MethodsUtil methodsUtil = new MethodsUtil();
@@ -19,20 +13,22 @@ public class Main {
             System.out.println("2. View All Equipment");
             System.out.println("3. Add New User");
             System.out.println("4. Update User");
-            System.out.println("5. Exit");
+            System.out.println("5. Delete User");
+            System.out.println("6. Exit");
             System.out.print("Enter your choice: ");
 
             int choice = scanner.nextInt();
-            scanner.nextLine(); // Consume newline. Or else will auto read "\n".
+            scanner.nextLine();
 
             switch (choice) {
                 case 1 -> methodsUtil.displayAllUsers();
                 case 2 -> methodsUtil.displayAllEquipment();
                 case 3 -> methodsUtil.addNewUser(scanner);
                 case 4 -> methodsUtil.updateUser(scanner);
-                case 5 -> {
+                case 5 -> methodsUtil.deleteUser(scanner);
+                case 6 -> {
                     System.out.println("Exiting...");
-                    return; // Exit the program
+                    return;
                 }
                 default -> System.out.println("Invalid choice. Please try again.");
             }

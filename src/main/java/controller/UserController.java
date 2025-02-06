@@ -37,5 +37,16 @@ public class UserController {
             return false;
         }
     }
+
+    public boolean deleteUser(String userId, String adminId) {
+        try {
+            String adminRole = userDAO.getUserRole(adminId);
+            RoleValidator.validateRole(adminRole, "Admin");
+            return userDAO.deleteUser(userId, adminId);
+        } catch (Exception e) {
+            System.err.println("Delete failed: " + e.getMessage());
+            return false;
+        }
+    }
 }
 
