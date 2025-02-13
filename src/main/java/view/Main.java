@@ -14,7 +14,8 @@ public class Main {
             System.out.println("3. Add New User");
             System.out.println("4. Update User");
             System.out.println("5. Delete User");
-            System.out.println("6. Exit");
+            System.out.println("6. View Equipment by Type");
+            System.out.println("7. Exit");
             System.out.print("Enter your choice: ");
 
             int choice = scanner.nextInt();
@@ -26,7 +27,8 @@ public class Main {
                 case 3 -> methodsUtil.addNewUser(scanner);
                 case 4 -> methodsUtil.updateUser(scanner);
                 case 5 -> methodsUtil.deleteUser(scanner);
-                case 6 -> {
+                case 6 -> methodsUtil.viewEquipmentByType(scanner);
+                case 7 -> {
                     System.out.println("Exiting...");
                     return;
                 }

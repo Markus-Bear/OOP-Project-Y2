@@ -41,4 +41,37 @@ public class EquipmentDAO {
 
         return equipmentList;
     }
+
+    // Fetch equipment by type
+    public List<Equipment> getEquipmentByType(String type) {
+        String query = "SELECT * FROM equipment WHERE type = ?";
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        List<Equipment> equipmentList = new ArrayList<>();
+
+        try {
+            conn = DatabaseConnection.getConnection();
+            stmt = conn.prepareStatement(query);
+            stmt.setString(1, type);
+            rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                Equipment equipment = new Equipment();
+                equipment.setEquipmentId(rs.getString("equipment_id"));
+                equipment.setName(rs.getString("name"));
+                equipment.setType(rs.getString("type"));
+                equipment.setDescription(rs.getString("description"));
+                equipment.setStatus(rs.getString("status"));
+                equipment.setState(rs.getString("state"));
+                equipmentList.add(equipment);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error fetching equipment by type: " + e.getMessage());
+        } finally {
+            DatabaseConnection.closeResources(conn, stmt, rs);
+        }
+
+        return equipmentList;
+    }
 }

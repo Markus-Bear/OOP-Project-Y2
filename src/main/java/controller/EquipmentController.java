@@ -15,4 +15,10 @@ public class EquipmentController {
         return equipmentDAO.getAllEquipment();
     }
 
+    //Retrieve equipment by type
+    public List<Equipment> getEquipmentByType(String type, String userRole) {
+        RoleValidator.validateRole(userRole, "Admin", "MediaStaff", "Student", "Lecturer");
+        return equipmentDAO.getEquipmentByType(type);
+    }
+
 }
