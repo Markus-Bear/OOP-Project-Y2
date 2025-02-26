@@ -12,32 +12,40 @@ public class DatabaseConnection {
         return DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD);
     }
 
-    // Close resources
-    public static void closeResources(Connection conn, PreparedStatement stmt, ResultSet rs) {
-        if (rs != null) {
-            try {
+    // Close resources (Connection, Statement, ResultSet)
+    public static void closeResources(Connection conn, Statement stmt, ResultSet rs) {
+        try {
+            if (rs != null) {
                 rs.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
             }
+        } catch (SQLException e) {
+            logError("Error closing ResultSet", e);
         }
-        if (stmt != null) {
-            try {
+
+        try {
+            if (stmt != null) {
                 stmt.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
             }
+        } catch (SQLException e) {
+            logError("Error closing Statement", e);
         }
-        if (conn != null) {
-            try {
+
+        try {
+            if (conn != null) {
                 conn.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
             }
+        } catch (SQLException e) {
+            logError("Error closing Connection", e);
         }
     }
 
-    public static void closeResources(Connection conn, PreparedStatement stmt) {
+    // Close resources (Connection, Statement)
+    public static void closeResources(Connection conn, Statement stmt) {
         closeResources(conn, stmt, null);
+    }
+
+    // Centralized error logging
+    private static void logError(String message, SQLException e) {
+        System.err.println(message + ": " + e.getMessage());
     }
 }

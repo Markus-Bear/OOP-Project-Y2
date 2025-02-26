@@ -8,6 +8,24 @@ public class Equipment {
     private String status;
     private String state;
 
+    public Equipment(String equipmentId, String name, String type, String description, String status, String state) {
+        this.equipmentId = equipmentId;
+        this.name = name;
+        this.type = type;
+        this.description = description;
+        this.status = status;
+        this.state = state;
+    }
+
+    public Equipment() {
+        this.equipmentId = "";
+        this.name = "";
+        this.type = "";
+        this.description = "";
+        this.status = "";
+        this.state = "";
+    }
+
 
     // Getters and Setters
     public String getEquipmentId() {

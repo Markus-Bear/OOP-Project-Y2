@@ -10,6 +10,27 @@ public class User {
     private String course;       // Course (For Students)
     private Integer year;        // Year (For Students)
 
+    public User(String userId, String email, String name, String password, String role, String department, String course, Integer year) {
+        this.userId = userId;
+        this.email = email;
+        this.name = name;
+        this.password = password;
+        this.role = role;
+        this.department = department;
+        this.course = course;
+        this.year = year;
+    }
+    public User() {
+        this.userId = "";
+        this.email = "";
+        this.name = "";
+        this.password = "";
+        this.role = "";
+        this.department = "";
+        this.course = "";
+        this.year = null;
+    }
+
     // Getters and Setters
     public String getUserId() {
         return userId;
