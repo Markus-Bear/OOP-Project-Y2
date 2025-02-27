@@ -1,24 +1,38 @@
 package model;
 
-import model.DatabaseConnection;
-
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.CallableStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 import exception.AuthenticationException;
 import exception.DatabaseOperationException;
 
+/**
+ * Data Access Object (DAO) for performing user-related database operations.
+ */
 public class UserDAO {
 
-
+    /**
+     * Authenticates a user using the provided email and password.
+     *
+     * @param email    the user's email address.
+     * @param password the user's password.
+     * @return a User object if authentication is successful.
+     * @throws AuthenticationException   if the email/password combination is invalid.
+     * @throws DatabaseOperationException if a database error occurs during authentication.
+     */
     public User authenticateUser(String email, String password) throws AuthenticationException, DatabaseOperationException {
-        String query = "SELECT u.user_id, u.email, u.name, u.role, " +
+        String query = "SELECT u.user_id, u.email, u.name, u.role, u.password, " +
                 "s.course, s.department AS student_department, s.year, " +
                 "l.department AS lecturer_department " +
                 "FROM users u " +
                 "LEFT JOIN students s ON u.user_id = s.student_id " +
                 "LEFT JOIN lecturers l ON u.user_id = l.lecturer_id " +
-                "WHERE u.email = ? AND u.password = ?";
+                "WHERE u.email = ?";
 
         Connection conn = null;
         PreparedStatement stmt = null;
@@ -28,10 +42,14 @@ public class UserDAO {
             conn = DatabaseConnection.getConnection();
             stmt = conn.prepareStatement(query);
             stmt.setString(1, email);
-            stmt.setString(2, password); // In a real system, passwords should be hashed!
             rs = stmt.executeQuery();
 
             if (rs.next()) {
+                String storedHash = rs.getString("password");
+                if (!controller.PasswordUtils.verifyPassword(password, storedHash)) {
+                    throw new AuthenticationException("Invalid email or password.");
+                }
+
                 User user = new User();
                 user.setUserId(rs.getString("user_id"));
                 user.setEmail(rs.getString("email"));
@@ -45,7 +63,6 @@ public class UserDAO {
                 } else if ("Lecturer".equalsIgnoreCase(user.getRole())) {
                     user.setDepartment(rs.getString("lecturer_department"));
                 }
-
                 return user;
             } else {
                 throw new AuthenticationException("Invalid email or password.");
@@ -59,7 +76,12 @@ public class UserDAO {
 
 
 
-    //Fetch all Users
+    /**
+     * Retrieves all users from the database.
+     *
+     * @return a list of all users.
+     * @throws DatabaseOperationException if a database error occurs.
+     */
     public List<User> getAllUsers() throws DatabaseOperationException {
         String query = "SELECT u.user_id, u.email, u.role, u.name, " +
                 "s.course, s.department AS student_department, s.year, " +
@@ -92,7 +114,6 @@ public class UserDAO {
                 } else if ("Lecturer".equalsIgnoreCase(user.getRole())) {
                     user.setDepartment(rs.getString("lecturer_department"));
                 }
-
                 users.add(user);
             }
         } catch (SQLException e) {
@@ -104,7 +125,12 @@ public class UserDAO {
         return users;
     }
 
-
+    /**
+     * Retrieves users who have the role Lecturer or Student.
+     *
+     * @return a list of lecturers and students.
+     * @throws DatabaseOperationException if a database error occurs.
+     */
     public List<User> getLecturersAndStudents() throws DatabaseOperationException {
         String query = "SELECT user_id, email, name, role FROM users WHERE role IN ('Lecturer', 'Student')";
         Connection conn = null;
@@ -134,7 +160,14 @@ public class UserDAO {
         return lecturersAndStudents;
     }
 
-
+    /**
+     * Retrieves a user based on their user ID.
+     *
+     * @param userId the user ID.
+     * @return the User object if found; otherwise, null.
+     * @throws DatabaseOperationException if a database error occurs.
+     * @throws IllegalArgumentException   if the userId is null or empty.
+     */
     public User getUserById(String userId) throws DatabaseOperationException {
         if (userId == null || userId.trim().isEmpty()) {
             throw new IllegalArgumentException("User ID cannot be null or empty.");
@@ -165,18 +198,16 @@ public class UserDAO {
                 user.setName(rs.getString("name"));
                 user.setRole(rs.getString("role"));
 
-                //Properly set role-specific fields
                 if ("Student".equalsIgnoreCase(user.getRole())) {
                     user.setCourse(rs.getString("course"));
                     user.setDepartment(rs.getString("student_department"));
-                    user.setYear(rs.getObject("year") != null ? rs.getInt("year") : null); // Handles NULL year values
+                    user.setYear(rs.getObject("year") != null ? rs.getInt("year") : null);
                 } else if ("Lecturer".equalsIgnoreCase(user.getRole())) {
                     user.setDepartment(rs.getString("lecturer_department"));
                 }
-
                 return user;
             } else {
-                return null; // User not found
+                return null;
             }
         } catch (SQLException e) {
             throw new DatabaseOperationException("Error fetching user by ID: " + userId, e);
@@ -185,7 +216,14 @@ public class UserDAO {
         }
     }
 
-
+    /**
+     * Retrieves the role of a user based on their user ID.
+     *
+     * @param userId the user ID.
+     * @return the user's role, or null if not found.
+     * @throws DatabaseOperationException if a database error occurs.
+     * @throws IllegalArgumentException   if the userId is null or empty.
+     */
     public String getUserRole(String userId) throws DatabaseOperationException {
         if (userId == null || userId.trim().isEmpty()) {
             throw new IllegalArgumentException("User ID cannot be null or empty.");
@@ -206,9 +244,18 @@ public class UserDAO {
             throw new DatabaseOperationException("Error fetching user role for ID: " + userId, e);
         }
 
-        return null; // User ID not found, returning null
+        return null;
     }
 
+    /**
+     * Adds a new user to the database using a stored procedure.
+     *
+     * @param user      the User object containing user details.
+     * @param creatorId the ID of the user creating the new user.
+     * @return true if the user is added successfully.
+     * @throws DatabaseOperationException if a database error occurs.
+     * @throws IllegalArgumentException   if the user object is null or creatorId is invalid.
+     */
     public boolean addUser(User user, String creatorId) throws DatabaseOperationException {
         if (user == null) {
             throw new IllegalArgumentException("User object cannot be null.");
@@ -225,27 +272,23 @@ public class UserDAO {
             conn = DatabaseConnection.getConnection();
             stmt = conn.prepareCall(sql);
 
-            // Set parameters with explicit null handling
             stmt.setString(1, user.getEmail());
             stmt.setString(2, user.getPassword());
             stmt.setString(3, user.getRole());
             stmt.setString(4, user.getName());
 
-            // Handle course field
             if (user.getCourse() != null) {
                 stmt.setString(5, user.getCourse());
             } else {
                 stmt.setNull(5, Types.VARCHAR);
             }
 
-            // Handle department field
             if (user.getDepartment() != null) {
                 stmt.setString(6, user.getDepartment());
             } else {
                 stmt.setNull(6, Types.VARCHAR);
             }
 
-            // Handle year field
             if (user.getYear() != null) {
                 stmt.setInt(7, user.getYear());
             } else {
@@ -253,14 +296,12 @@ public class UserDAO {
             }
 
             stmt.setString(8, creatorId);
-
             stmt.execute();
             return true;
 
         } catch (SQLException e) {
             throw new DatabaseOperationException("Error adding user to the database.", e);
         } finally {
-            // Ensuring resources are closed even if an exception occurs
             try {
                 DatabaseConnection.closeResources(conn, stmt);
             } catch (Exception e) {
@@ -269,6 +310,15 @@ public class UserDAO {
         }
     }
 
+    /**
+     * Updates an existing user using a stored procedure.
+     *
+     * @param user    the User object with updated details.
+     * @param adminId the admins ID performing the update.
+     * @return true if the update is successful.
+     * @throws DatabaseOperationException if a database error occurs.
+     * @throws IllegalArgumentException   if the user object or required fields are invalid.
+     */
     public boolean updateUser(User user, String adminId) throws DatabaseOperationException {
         if (user == null) {
             throw new IllegalArgumentException("User object cannot be null.");
@@ -286,36 +336,35 @@ public class UserDAO {
             throw new IllegalArgumentException("Name cannot be null or empty.");
         }
 
-        String sql = "{CALL UpdateUser(?, ?, ?, ?, ?, ?, ?)}";
+        String sql = "{CALL UpdateUser(?, ?, ?, ?, ?, ?, ?, ?)}";
 
         try (Connection conn = DatabaseConnection.getConnection();
              CallableStatement stmt = conn.prepareCall(sql)) {
 
-            // Set parameters
             stmt.setString(1, user.getUserId());
             stmt.setString(2, user.getEmail());
             stmt.setString(3, user.getName());
+            stmt.setString(4, user.getPassword());
 
-            // Handle potential NULL values properly
             if (user.getCourse() != null) {
-                stmt.setString(4, user.getCourse());
-            } else {
-                stmt.setNull(4, Types.VARCHAR);
-            }
-
-            if (user.getDepartment() != null) {
-                stmt.setString(5, user.getDepartment());
+                stmt.setString(5, user.getCourse());
             } else {
                 stmt.setNull(5, Types.VARCHAR);
             }
 
-            if (user.getYear() != null) {
-                stmt.setInt(6, user.getYear());
+            if (user.getDepartment() != null) {
+                stmt.setString(6, user.getDepartment());
             } else {
-                stmt.setNull(6, Types.INTEGER);
+                stmt.setNull(6, Types.VARCHAR);
             }
 
-            stmt.setString(7, adminId);
+            if (user.getYear() != null) {
+                stmt.setInt(7, user.getYear());
+            } else {
+                stmt.setNull(7, Types.INTEGER);
+            }
+
+            stmt.setString(8, adminId);
 
             stmt.execute();
             return true;
@@ -324,6 +373,15 @@ public class UserDAO {
         }
     }
 
+    /**
+     * Deletes a user using a stored procedure.
+     *
+     * @param userId      the ID of the user to be deleted.
+     * @param requesterId the ID of the user requesting the deletion.
+     * @return true if the deletion is successful.
+     * @throws DatabaseOperationException if a database error occurs.
+     * @throws IllegalArgumentException   if userId or requesterId is invalid.
+     */
     public boolean deleteUser(String userId, String requesterId) throws DatabaseOperationException {
         if (userId == null || userId.trim().isEmpty()) {
             throw new IllegalArgumentException("User ID cannot be null or empty.");

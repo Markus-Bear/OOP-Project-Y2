@@ -6,41 +6,60 @@ import model.User;
 
 import java.util.Scanner;
 
+/**
+ * The Main class is the entry point for the application.
+ * It handles user login and routes the logged-in user to the appropriate menu based on their role.
+ */
 public class Main {
+
+    /**
+     * Main method that creates a Scanner and starts the application.
+     *
+     * @param args command-line arguments (not used)
+     */
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         startApplication(scanner);
     }
 
+    /**
+     * Starts the application by prompting the user to login and then routing to the appropriate menu.
+     *
+     * @param scanner the Scanner used to read user input
+     */
     public static void startApplication(Scanner scanner) {
         LoginManager loginManager = new LoginManager();
         MethodsUtil methodsUtil = new MethodsUtil();
         User loggedInUser = null;
 
+        // Keep prompting until successful login
         while (loggedInUser == null) {
-            loggedInUser = loginManager.loginUser(); // Keep prompting until successful login
+            loggedInUser = loginManager.loginUser();
         }
 
         System.out.println("\nWelcome, " + loggedInUser.getName() + "!");
 
-        // Route user to the appropriate menu
+        // Route user to the appropriate menu based on role
         switch (loggedInUser.getRole()) {
-            case "Admin":
-                adminMenu(scanner, loggedInUser, methodsUtil);
-                break;
-            case "MediaStaff":
-                mediaStaffMenu(scanner, loggedInUser, methodsUtil);
-                break;
-            case "Lecturer", "Student":
-                userMenu(scanner, loggedInUser, methodsUtil);
-                break;
-            default:
+            case "Admin" -> adminMenu(scanner, loggedInUser, methodsUtil);
+            case "MediaStaff" -> mediaStaffMenu(scanner, loggedInUser, methodsUtil);
+            case "Lecturer", "Student" -> userMenu(scanner, loggedInUser, methodsUtil);
+            default -> {
                 System.out.println("Invalid role detected. Exiting...");
                 System.exit(1);
+            }
         }
     }
 
     // ========================= ADMIN MENUS ========================= //
+
+    /**
+     * Displays the Admin main menu and routes to the appropriate sub-menu based on user input.
+     *
+     * @param scanner      the Scanner used to read user input
+     * @param loggedInUser the logged-in user
+     * @param methodsUtil  an instance of MethodsUtil to perform operations
+     */
     public static void adminMenu(Scanner scanner, User loggedInUser, MethodsUtil methodsUtil) {
         while (true) {
             System.out.println("\n===== Admin Menu =====");
@@ -68,6 +87,12 @@ public class Main {
         }
     }
 
+    /**
+     * Displays the Admin User Management menu for viewing, adding, updating, and deleting users.
+     *
+     * @param scanner     the Scanner used to read user input
+     * @param methodsUtil an instance of MethodsUtil to perform user management operations
+     */
     public static void adminUserManagementMenu(Scanner scanner, MethodsUtil methodsUtil) {
         while (true) {
             System.out.println("\n===== Admin - User Management =====");
@@ -94,6 +119,12 @@ public class Main {
         }
     }
 
+    /**
+     * Displays the Admin Equipment Management menu for viewing, adding, updating, and deleting equipment.
+     *
+     * @param scanner     the Scanner used to read user input
+     * @param methodsUtil an instance of MethodsUtil to perform equipment management operations
+     */
     public static void adminEquipmentManagementMenu(Scanner scanner, MethodsUtil methodsUtil) {
         while (true) {
             System.out.println("\n===== Admin - Equipment Management =====");
@@ -122,6 +153,13 @@ public class Main {
         }
     }
 
+    /**
+     * Displays the Admin Reservations/Check-Out/Check-In menu for managing reservations and equipment check operations.
+     *
+     * @param scanner      the Scanner used to read user input
+     * @param loggedInUser the logged-in user
+     * @param methodsUtil  an instance of MethodsUtil to perform reservation operations
+     */
     public static void adminReservationsCheckOutMenu(Scanner scanner, User loggedInUser, MethodsUtil methodsUtil) {
         while (true) {
             System.out.println("\n===== Admin - Reservations / Check-Out / Check-In =====");
@@ -147,6 +185,14 @@ public class Main {
     }
 
     // ========================= MEDIA STAFF MENUS ========================= //
+
+    /**
+     * Displays the Media Staff main menu and routes to the appropriate sub-menu.
+     *
+     * @param scanner      the Scanner used to read user input
+     * @param loggedInUser the logged-in user
+     * @param methodsUtil  an instance of MethodsUtil to perform operations
+     */
     public static void mediaStaffMenu(Scanner scanner, User loggedInUser, MethodsUtil methodsUtil) {
         while (true) {
             System.out.println("\n===== Media Staff Menu =====");
@@ -174,6 +220,12 @@ public class Main {
         }
     }
 
+    /**
+     * Displays the Media Staff Equipment Management menu.
+     *
+     * @param scanner     the Scanner used to read user input
+     * @param methodsUtil an instance of MethodsUtil to perform equipment management operations
+     */
     public static void mediaStaffEquipmentManagementMenu(Scanner scanner, MethodsUtil methodsUtil) {
         while (true) {
             System.out.println("\n===== Media Staff - Equipment Management =====");
@@ -196,6 +248,13 @@ public class Main {
         }
     }
 
+    /**
+     * Displays the Media Staff Reservations/Check-Out/Check-In menu.
+     *
+     * @param scanner      the Scanner used to read user input
+     * @param loggedInUser the logged-in user
+     * @param methodsUtil  an instance of MethodsUtil to perform reservation operations
+     */
     public static void mediaStaffReservationsCheckOutMenu(Scanner scanner, User loggedInUser, MethodsUtil methodsUtil) {
         while (true) {
             System.out.println("\n===== Media Staff - Reservations / Check-Out / Check-In =====");
@@ -221,6 +280,14 @@ public class Main {
     }
 
     // ========================= UNIFIED LECTURER & STUDENT MENU ========================= //
+
+    /**
+     * Displays a unified menu for Lecturers and Students.
+     *
+     * @param scanner      the Scanner used to read user input
+     * @param loggedInUser the logged-in user
+     * @param methodsUtil  an instance of MethodsUtil to perform operations
+     */
     public static void userMenu(Scanner scanner, User loggedInUser, MethodsUtil methodsUtil) {
         while (true) {
             System.out.println("\n===== " + loggedInUser.getRole() + " Menu =====");

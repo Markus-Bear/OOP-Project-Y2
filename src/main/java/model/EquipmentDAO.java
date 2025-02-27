@@ -1,15 +1,25 @@
 package model;
 
-import java.sql.*;
+import exception.DatabaseOperationException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import model.DatabaseConnection;
-import exception.DatabaseOperationException;
 
-
+/**
+ * Data Access Object (DAO) for performing operations on Equipment data.
+ * Provides methods for fetching, adding, updating, and deleting equipment records.
+ */
 public class EquipmentDAO {
 
-    // Fetch all equipment
+    /**
+     * Retrieves all equipment from the database.
+     *
+     * @return a List of Equipment objects representing all equipment.
+     * @throws DatabaseOperationException if a database error occurs.
+     */
     public List<Equipment> getAllEquipment() throws DatabaseOperationException {
         String query = "SELECT * FROM Equipment";
         List<Equipment> equipmentList = new ArrayList<>();
@@ -35,6 +45,14 @@ public class EquipmentDAO {
         return equipmentList;
     }
 
+    /**
+     * Retrieves equipment filtered by a specific status.
+     *
+     * @param status the equipment status to filter by.
+     * @return a List of Equipment objects that have the specified status.
+     * @throws DatabaseOperationException if a database error occurs.
+     * @throws IllegalArgumentException   if status is null or empty.
+     */
     public List<Equipment> getEquipmentByStatus(String status) throws DatabaseOperationException {
         if (status == null || status.trim().isEmpty()) {
             throw new IllegalArgumentException("Status cannot be null or empty.");
@@ -67,14 +85,20 @@ public class EquipmentDAO {
         return equipmentList;
     }
 
-
-    // Fetch equipment by type
+    /**
+     * Retrieves equipment filtered by a specific type.
+     *
+     * @param type the equipment type to filter by.
+     * @return a List of Equipment objects that have the specified type.
+     * @throws DatabaseOperationException if a database error occurs.
+     * @throws IllegalArgumentException   if type is null or empty.
+     */
     public List<Equipment> getEquipmentByType(String type) throws DatabaseOperationException {
         if (type == null || type.trim().isEmpty()) {
             throw new IllegalArgumentException("Equipment type cannot be null or empty.");
         }
 
-        String query = "SELECT * FROM equipment WHERE type = ?";
+        String query = "SELECT * FROM Equipment WHERE type = ?";
         List<Equipment> equipmentList = new ArrayList<>();
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -101,6 +125,15 @@ public class EquipmentDAO {
         return equipmentList;
     }
 
+    /**
+     * Retrieves equipment filtered by type and status.
+     *
+     * @param type   the equipment type to filter by.
+     * @param status the equipment status to filter by.
+     * @return a List of Equipment objects that match the specified type and status.
+     * @throws DatabaseOperationException if a database error occurs.
+     * @throws IllegalArgumentException   if type or status is null or empty.
+     */
     public List<Equipment> getEquipmentByTypeAndStatus(String type, String status) throws DatabaseOperationException {
         if (type == null || type.trim().isEmpty()) {
             throw new IllegalArgumentException("Equipment type cannot be null or empty.");
@@ -137,7 +170,15 @@ public class EquipmentDAO {
         return equipmentList;
     }
 
-    //Add new equipment
+    /**
+     * Adds a new equipment record to the database using a stored procedure.
+     *
+     * @param equipment the Equipment object containing equipment details.
+     * @param userId    the ID of the user adding the equipment.
+     * @return true if the equipment is added successfully; false otherwise.
+     * @throws DatabaseOperationException if a database error occurs.
+     * @throws IllegalArgumentException   if equipment or required fields are invalid.
+     */
     public boolean addEquipment(Equipment equipment, String userId) throws DatabaseOperationException {
         if (equipment == null) {
             throw new IllegalArgumentException("Equipment object cannot be null.");
@@ -189,6 +230,15 @@ public class EquipmentDAO {
         }
     }
 
+    /**
+     * Updates an existing equipment record using a stored procedure.
+     *
+     * @param equipment   the Equipment object with updated details.
+     * @param requesterId the ID of the user requesting the update.
+     * @return true if the equipment is updated successfully; false otherwise.
+     * @throws DatabaseOperationException if a database error occurs.
+     * @throws IllegalArgumentException   if equipment or required fields are invalid.
+     */
     public boolean updateEquipment(Equipment equipment, String requesterId) throws DatabaseOperationException {
         if (equipment == null) {
             throw new IllegalArgumentException("Equipment object cannot be null.");
@@ -248,6 +298,15 @@ public class EquipmentDAO {
         }
     }
 
+    /**
+     * Deletes an equipment record using a stored procedure.
+     *
+     * @param equipmentId the ID of the equipment to delete.
+     * @param userId      the ID of the user requesting deletion.
+     * @return true if the equipment is deleted successfully; false otherwise.
+     * @throws DatabaseOperationException if a database error occurs.
+     * @throws IllegalArgumentException   if equipmentId or userId is null or empty.
+     */
     public boolean deleteEquipment(String equipmentId, String userId) throws DatabaseOperationException {
         if (equipmentId == null || equipmentId.trim().isEmpty()) {
             throw new IllegalArgumentException("Equipment ID cannot be null or empty.");

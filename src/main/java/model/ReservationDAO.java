@@ -1,13 +1,32 @@
 package model;
 
-import java.sql.*;
+import exception.DatabaseOperationException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Date;
 import java.util.ArrayList;
 import java.util.List;
-import exception.DatabaseOperationException;
 
+/**
+ * Data Access Object (DAO) for performing reservation-related database operations.
+ */
 public class ReservationDAO {
 
-    // Fetch all reservations (Admin & Media Staff see all, regular users see their own)
+    /**
+     * Retrieves all reservations.
+     * <p>
+     * If the user is an admin or media staff, all reservations are returned.
+     * Otherwise, only reservations for the specified user ID are returned.
+     * </p>
+     *
+     * @param userId              the user ID to filter reservations (for non-admin users)
+     * @param isAdminOrMediaStaff true if the requester is an admin or media staff; false otherwise
+     * @return a list of Reservation objects
+     * @throws DatabaseOperationException if a database error occurs
+     * @throws IllegalArgumentException   if userId is null or empty for non-admin users
+     */
     public List<Reservation> getAllReservations(String userId, boolean isAdminOrMediaStaff) throws DatabaseOperationException {
         if (!isAdminOrMediaStaff && (userId == null || userId.trim().isEmpty())) {
             throw new IllegalArgumentException("User ID cannot be null or empty for non-admin users.");
@@ -30,7 +49,7 @@ public class ReservationDAO {
              PreparedStatement stmt = conn.prepareStatement(query)) {
 
             if (!isAdminOrMediaStaff) {
-                stmt.setString(1, userId); // Only apply filter for non-admin users
+                stmt.setString(1, userId);
             }
 
             try (ResultSet rs = stmt.executeQuery()) {
@@ -52,7 +71,16 @@ public class ReservationDAO {
         return reservations;
     }
 
-    // Create a reservation request
+    /**
+     * Creates a new reservation request.
+     *
+     * @param userId          the ID of the user making the reservation
+     * @param equipmentId     the ID of the equipment to reserve
+     * @param reservationDate the date of the reservation
+     * @return true if the reservation is created successfully; false otherwise
+     * @throws DatabaseOperationException if a database error occurs
+     * @throws IllegalArgumentException   if any parameter is null or empty
+     */
     public boolean createReservation(String userId, String equipmentId, Date reservationDate) throws DatabaseOperationException {
         if (userId == null || userId.trim().isEmpty()) {
             throw new IllegalArgumentException("User ID cannot be null or empty.");
@@ -79,7 +107,16 @@ public class ReservationDAO {
         }
     }
 
-    // Approve or reject a reservation (Admin only)
+    /**
+     * Approves or rejects a reservation. (Admin only)
+     *
+     * @param reservationId the ID of the reservation to update
+     * @param adminId       the admin's ID performing the update
+     * @param status        the new status for the reservation
+     * @return true if the update is successful; false otherwise
+     * @throws DatabaseOperationException if a database error occurs
+     * @throws IllegalArgumentException   if reservationId is not greater than 0, or if adminId/status is null or empty
+     */
     public boolean approveReservation(int reservationId, String adminId, String status) throws DatabaseOperationException {
         if (reservationId <= 0) {
             throw new IllegalArgumentException("Reservation ID must be greater than 0.");
