@@ -51,8 +51,10 @@ public class InputValidator {
 
     /**
      * Prompts the user for a valid email based on the role.
-     * For "Student" role, the local part must match the pattern "^C00\\d+".
-     * For other roles, only letters are allowed before "@setu.ie".
+     * For "Student" role, the local part must match the pattern "^C00\\d+$"
+     * and is left in the case provided by the user.
+     * For other roles, the email is converted to lowercase and must follow
+     * the pattern "^[a-zA-Z]+\\.[a-zA-Z]+$" for the local part.
      *
      * @param scanner the Scanner to read input from
      * @param role    the role that influences the email pattern
@@ -61,29 +63,45 @@ public class InputValidator {
     public static String getValidatedEmail(Scanner scanner, String role) {
         String email = "";
         boolean valid = false;
+
         while (!valid) {
             System.out.print("Email: ");
-            email = scanner.nextLine().trim().toLowerCase();
-            if (!email.endsWith("@setu.ie")) {
+            // Read the email exactly as entered by the user
+            email = scanner.nextLine().trim();
+
+            // Check that the domain is correct (case-insensitive check)
+            if (!email.toLowerCase().endsWith("@setu.ie")) {
                 System.out.println("Email must end with '@setu.ie'.");
                 continue;
             }
-            String localPart = email.substring(0, email.indexOf("@"));
+
+            // Extract the local part (everything before the '@')
+            int atIndex = email.indexOf("@");
+            String localPart = email.substring(0, atIndex);
+
             if (role.equalsIgnoreCase("Student")) {
+                // For students, do not modify the case.
+                // Validate that the local part matches the uppercase pattern.
                 if (!localPart.matches("^C00\\d+$")) {
                     System.out.println("Student email must start with 'C00' followed by numbers.");
                     continue;
                 }
             } else {
+                // For non-student roles, convert the email to lowercase.
+                email = email.toLowerCase();
+                // Update the local part after conversion.
+                localPart = email.substring(0, email.indexOf("@"));
                 if (!localPart.matches("^[a-zA-Z]+\\.[a-zA-Z]+$")) {
-                    System.out.println("Email for this role must 'firstname.lastname' before '@setu.ie'.");
+                    System.out.println("Email for this role must be in the format 'firstname.lastname' before '@setu.ie'.");
                     continue;
                 }
             }
+
             valid = true;
         }
         return email;
     }
+
 
     /**
      * Prompts the user until a valid name is entered.
