@@ -1120,13 +1120,24 @@ public class MethodsUtil {
         }
     }
 
+
+    // Return the full list of departments.
+    public static String[] getDepartments() {
+        return new String[]{
+                "Sport Management", "Architecture", "Arts & Social Studies", "Built Environment", "Business",
+                "Computing", "Engineering", "Hospitality, Tourism & Culinary Arts", "Early Years Education", "Media",
+                "Design & Music", "Nursing", "Health & Psychology", "Science", "Law", "Sport Science"
+        };
+    }
+
+
     /**
      * Returns an array of courses based on the provided department.
      *
      * @param department the department.
      * @return an array of available courses.
      */
-    private String[] getCoursesForDepartment(String department) {
+    public static String[] getCoursesForDepartment(String department) {
         switch (department) {
             case "Sport Management":
                 return new String[]{

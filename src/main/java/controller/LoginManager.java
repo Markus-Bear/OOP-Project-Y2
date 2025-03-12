@@ -1,5 +1,6 @@
 package controller;
 
+import exception.DatabaseOperationException;
 import model.User;
 import java.util.Scanner;
 import exception.AuthenticationException;
@@ -57,6 +58,26 @@ public class LoginManager {
         System.out.println("\n\nToo many failed login attempts. Terminating program.");
         System.exit(0);
         return null; // This line will never be reached. Well it shouldn't.
+    }
+
+    // In controller/LoginManager.java
+    public User loginUser(String email, String password) throws AuthenticationException {
+        if(email == null || email.trim().isEmpty() || password == null || password.trim().isEmpty()){
+            throw new AuthenticationException("Email or password cannot be empty.");
+        }
+
+        User user = null;
+        try {
+            user = userController.login(email, password);
+        } catch (DatabaseOperationException e) {
+            throw new RuntimeException(e);
+        }
+        if(user == null){
+            throw new AuthenticationException("Invalid credentials. Please try again.");
+        }
+
+        System.out.println("\nLogin successful! Welcome, " + user.getName() + ".");
+        return user;
     }
 
 }
