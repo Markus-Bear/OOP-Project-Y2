@@ -44,6 +44,8 @@ public class AdminFrame extends JFrame {
         JButton logoutButton = new JButton("Log out");
         logoutButton.setBackground(Color.DARK_GRAY);
         logoutButton.setForeground(Color.WHITE);
+        logoutButton.setPreferredSize(new Dimension(100, 30));
+        logoutButton.setMaximumSize(new Dimension(100, 30));
         logoutButton.setFocusPainted(false);
         logoutButton.addActionListener(e -> {
             dispose();
@@ -100,6 +102,55 @@ public class AdminFrame extends JFrame {
         }
     }
 
+
+    private JButton createMenuItem(String text) {
+        JButton button = new JButton(text);
+        // Force a basic UI that respects our background color changes.
+        button.setUI(new BasicButtonUI());
+
+        button.setAlignmentX(Component.CENTER_ALIGNMENT);
+        button.setPreferredSize(new Dimension(0, 50));
+        button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+        button.setBackground(Color.DARK_GRAY);
+        button.setForeground(Color.WHITE);
+        button.setFocusPainted(true);
+        button.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+        button.setContentAreaFilled(true);
+        button.setOpaque(true);
+        button.setRolloverEnabled(true);
+        button.setBorderPainted(false);
+
+        // Define colors for different states.
+        final Color defaultColor = Color.DARK_GRAY;
+        final Color hoverColor = new Color(64, 64, 64);    // slightly lighter grey
+        final Color pressedColor = new Color(96, 96, 96);   // even lighter grey for pressed state
+
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(hoverColor);
+            }
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(defaultColor);
+            }
+            @Override
+            public void mousePressed(MouseEvent e) {
+                button.setBackground(pressedColor);
+            }
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (button.contains(e.getPoint())) {
+                    button.setBackground(hoverColor);
+                } else {
+                    button.setBackground(defaultColor);
+                }
+            }
+        });
+        return button;
+    }
+
+
     // --------------------------
     // User Management Panel
     // --------------------------
@@ -107,75 +158,29 @@ public class AdminFrame extends JFrame {
         private String adminId;
         private JPanel contentPanel;
 
-        private JButton createMenuItem(String text) {
-            JButton btn = new JButton(text);
-            // Force a basic UI that respects our background color changes.
-            btn.setUI(new BasicButtonUI());
-
-            btn.setAlignmentX(Component.CENTER_ALIGNMENT);
-            btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, btn.getPreferredSize().height));
-            btn.setBackground(Color.DARK_GRAY);
-            btn.setForeground(Color.WHITE);
-            btn.setFocusPainted(false);
-            btn.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
-            btn.setContentAreaFilled(true);
-            btn.setOpaque(true);
-            btn.setRolloverEnabled(false);
-            btn.setBorderPainted(false);
-
-            // Define colors for different states.
-            final Color defaultColor = Color.DARK_GRAY;
-            final Color hoverColor = new Color(64, 64, 64);    // slightly lighter grey
-            final Color pressedColor = new Color(96, 96, 96);   // even lighter grey for pressed state
-
-            btn.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    btn.setBackground(hoverColor);
-                }
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    btn.setBackground(defaultColor);
-                }
-                @Override
-                public void mousePressed(MouseEvent e) {
-                    btn.setBackground(pressedColor);
-                }
-                @Override
-                public void mouseReleased(MouseEvent e) {
-                    if (btn.contains(e.getPoint())) {
-                        btn.setBackground(hoverColor);
-                    } else {
-                        btn.setBackground(defaultColor);
-                    }
-                }
-            });
-            return btn;
-        }
-
         public UserManagementPanel(String adminId) {
             this.adminId = adminId;
 
 
-            // Sidebar with buttons
+            // Sidebar with MenuItems
             JPanel sidebar = new JPanel();
             sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
             sidebar.setBackground(Color.DARK_GRAY);
 
 
-            JButton btnViewAll = createMenuItem("View All Users");
-            JButton btnAdd = createMenuItem("Add New User");
-            JButton btnUpdate = createMenuItem("Update User");
-            JButton btnDelete = createMenuItem("Delete User");
+            JButton buttonViewAllUsers = createMenuItem("View All Users");
+            JButton buttonAddUser = createMenuItem("Add New User");
+            JButton buttonUpdateUser = createMenuItem("Update User");
+            JButton buttonDeleteUser = createMenuItem("Delete User");
 
             sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
-            sidebar.add(btnViewAll);
+            sidebar.add(buttonViewAllUsers);
             sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
-            sidebar.add(btnAdd);
+            sidebar.add(buttonAddUser);
             sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
-            sidebar.add(btnUpdate);
+            sidebar.add(buttonUpdateUser);
             sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
-            sidebar.add(btnDelete);
+            sidebar.add(buttonDeleteUser);
 
             // Create content panel (initially with a placeholder)
             contentPanel = new JPanel(new BorderLayout());
@@ -191,10 +196,10 @@ public class AdminFrame extends JFrame {
             add(splitPane, BorderLayout.CENTER);
 
             // Action listeners
-            btnViewAll.addActionListener(e -> loadViewAllUsers());
-            btnAdd.addActionListener(e -> loadAddUser());
-            btnUpdate.addActionListener(e -> loadUpdateUser());
-            btnDelete.addActionListener(e -> loadDeleteUser());
+            buttonViewAllUsers.addActionListener(e -> loadViewAllUsers());
+            buttonAddUser.addActionListener(e -> loadAddUser());
+            buttonUpdateUser.addActionListener(e -> loadUpdateUser());
+            buttonDeleteUser.addActionListener(e -> loadDeleteUser());
         }
 
         private void loadViewAllUsers() {
@@ -329,8 +334,10 @@ public class AdminFrame extends JFrame {
 
             // Row 5: Submit button.
             JButton addUserButton = new JButton("Add User");
-            addUserButton.setBackground(Color.DARK_GRAY);
-            addUserButton.setForeground(Color.WHITE);
+            addUserButton.setBackground(Color.LIGHT_GRAY);
+            addUserButton.setForeground(Color.DARK_GRAY);
+            addUserButton.setPreferredSize(new Dimension(30, 30));
+            addUserButton.setMaximumSize(new Dimension(30, 30));
             addUserButton.setFocusPainted(false);
             gbc.gridx = 0;
             gbc.gridy = 5;
@@ -432,8 +439,10 @@ public class AdminFrame extends JFrame {
                 JScrollPane scrollPane = new JScrollPane(table);
                 updatePanel.add(scrollPane, BorderLayout.CENTER);
                 JButton updateUserButton = new JButton("Update Selected User");
-                updateUserButton.setBackground(Color.DARK_GRAY);
-                updateUserButton.setForeground(Color.WHITE);
+                updateUserButton.setBackground(Color.LIGHT_GRAY);
+                updateUserButton.setForeground(Color.DARK_GRAY);
+                updateUserButton.setPreferredSize(new Dimension(30, 30));
+                updateUserButton.setMaximumSize(new Dimension(30, 30));
                 updateUserButton.setFocusPainted(false);
                 updatePanel.add(updateUserButton, BorderLayout.SOUTH);
                 updateUserButton.addActionListener(e -> {
@@ -462,8 +471,10 @@ public class AdminFrame extends JFrame {
                         JTextField tfRole = new JTextField(selectedUser.getRole(), 20);
                         tfRole.setEditable(false); // Role not editable in update
                         JButton updateUserSubmitButton = new JButton("Update User");
-                        updateUserSubmitButton.setBackground(Color.DARK_GRAY);
-                        updateUserSubmitButton.setForeground(Color.WHITE);
+                        updateUserSubmitButton.setBackground(Color.LIGHT_GRAY);
+                        updateUserSubmitButton.setForeground(Color.DARK_GRAY);
+                        updateUserButton.setPreferredSize(new Dimension(30, 30));
+                        updateUserButton.setMaximumSize(new Dimension(30, 30));
                         updateUserSubmitButton.setFocusPainted(false);
 
                         gbc.gridx = 0; gbc.gridy = 0;
@@ -523,8 +534,10 @@ public class AdminFrame extends JFrame {
                 JScrollPane scrollPane = new JScrollPane(table);
                 deletePanel.add(scrollPane, BorderLayout.CENTER);
                 JButton deleteUserButton = new JButton("Delete Selected User");
-                deleteUserButton.setBackground(Color.DARK_GRAY);
-                deleteUserButton.setForeground(Color.WHITE);
+                deleteUserButton.setBackground(Color.LIGHT_GRAY);
+                deleteUserButton.setForeground(Color.DARK_GRAY);
+                deleteUserButton.setPreferredSize(new Dimension(30, 30));
+                deleteUserButton.setMaximumSize(new Dimension(30, 30));
                 deleteUserButton.setFocusPainted(false);
                 deletePanel.add(deleteUserButton, BorderLayout.SOUTH);
                 deleteUserButton.addActionListener(e -> {
@@ -564,57 +577,60 @@ public class AdminFrame extends JFrame {
 
         public EquipmentManagementPanel(String adminId) {
             this.adminId = adminId;
-            setLayout(new BorderLayout());
-            JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-            splitPane.setDividerLocation(200);
 
             JPanel sidebar = new JPanel();
             sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
-            JButton btnViewAll = new JButton("View All Equipment");
-            JButton btnViewByType = new JButton("View Equipment by Type");
-            JButton btnAdd = new JButton("Add New Equipment");
-            JButton btnUpdate = new JButton("Update Equipment");
-            JButton btnDelete = new JButton("Delete Equipment");
-            sidebar.add(btnViewAll);
+            sidebar.setBackground(Color.DARK_GRAY);
+
+            JButton buttonViewAllEquipment = createMenuItem("View All Equipment");
+            JButton buttonViewByType = createMenuItem("View Equipment by Type");
+            JButton buttonAddEquipment = createMenuItem("Add New Equipment");
+            JButton buttonUpdateEquipment = createMenuItem("Update Equipment");
+            JButton buttonDeleteEquipment = createMenuItem("Delete Equipment");
+            sidebar.add(buttonViewAllEquipment);
             sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
-            sidebar.add(btnViewByType);
+            sidebar.add(buttonViewByType);
             sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
-            sidebar.add(btnAdd);
+            sidebar.add(buttonAddEquipment);
             sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
-            sidebar.add(btnUpdate);
+            sidebar.add(buttonUpdateEquipment);
             sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
-            sidebar.add(btnDelete);
+            sidebar.add(buttonDeleteEquipment);
 
             contentPanel = new JPanel(new BorderLayout());
             contentPanel.add(new JLabel("Select an option from the sidebar."), BorderLayout.CENTER);
 
-            splitPane.setLeftComponent(sidebar);
-            splitPane.setRightComponent(contentPanel);
+            JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, sidebar, contentPanel);
+            splitPane.setDividerLocation(200);
+            splitPane.setEnabled(false);
+            splitPane.setDividerSize(0);
+
+            setLayout(new BorderLayout());
             add(splitPane, BorderLayout.CENTER);
 
-            btnViewAll.addActionListener(e -> {
+            buttonViewAllEquipment.addActionListener(e -> {
                 try {
                     loadViewAllEquipment();
                 } catch (DatabaseOperationException ex) {
                     throw new RuntimeException(ex);
                 }
             });
-            btnViewByType.addActionListener(e -> {
+            buttonViewByType.addActionListener(e -> {
                 try {
                     loadViewEquipmentByType();
                 } catch (DatabaseOperationException ex) {
                     throw new RuntimeException(ex);
                 }
             });
-            btnAdd.addActionListener(e -> loadAddEquipment());
-            btnUpdate.addActionListener(e -> {
+            buttonAddEquipment.addActionListener(e -> loadAddEquipment());
+            buttonUpdateEquipment.addActionListener(e -> {
                 try {
                     loadUpdateEquipment();
                 } catch (DatabaseOperationException ex) {
                     throw new RuntimeException(ex);
                 }
             });
-            btnDelete.addActionListener(e -> {
+            buttonDeleteEquipment.addActionListener(e -> {
                 try {
                     loadDeleteEquipment();
                 } catch (DatabaseOperationException ex) {
