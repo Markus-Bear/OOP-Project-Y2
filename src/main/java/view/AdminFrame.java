@@ -1,21 +1,28 @@
 package view;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.plaf.basic.BasicButtonUI;
 import java.awt.*;
 import java.awt.event.*;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
-import controller.UserController;
-import controller.EquipmentController;
-import controller.ReservationController;
-import controller.CheckoutController;
+import java.util.HashMap;
+import java.util.Map;
+
+import controller.*;
 import model.User;
 import model.Equipment;
 import model.Reservation;
 import exception.DatabaseOperationException;
 import exception.RoleAccessException;
-import javax.swing.plaf.basic.BasicButtonUI;
-
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
+import org.jfree.chart.JFreeChart;
+import org.jfree.data.category.DefaultCategoryDataset;
+import org.jfree.data.general.DefaultPieDataset;
 
 public class AdminFrame extends JFrame {
     private User loggedInUser;
@@ -31,7 +38,8 @@ public class AdminFrame extends JFrame {
         JPanel mainPanel = new JPanel(new BorderLayout());
         tabbedPane = new JTabbedPane();
 
-        // Create tabs
+        // Create tabs (Home tab added first)
+        tabbedPane.addTab("Home", new HomePanel(loggedInUser));
         tabbedPane.addTab("View Profile", new ViewProfilePanel(loggedInUser));
         tabbedPane.addTab("User Management", new UserManagementPanel(loggedInUser.getUserId()));
         tabbedPane.addTab("Equipment Management", new EquipmentManagementPanel(loggedInUser.getUserId()));
@@ -58,47 +66,188 @@ public class AdminFrame extends JFrame {
     }
 
     // --------------------------
+    // Home Panel (new)
+    // --------------------------
+    // Inside your AdminFrame class:
+    // Inside your AdminFrame class:
+    class HomePanel extends JPanel {
+        private ChartPanel reservationsStatusChartPanel;
+        private Timer timer;
+        private User loggedInUser; // access to the logged in user
+
+        public HomePanel(User user) {
+            this.loggedInUser = user;
+            // Use a GridLayout (2 rows x 2 columns) for four charts.
+            setLayout(new GridLayout(2, 2, 10, 10)); // 10px horizontal & vertical gaps
+
+            int chartSize = 300; // width and height (adjust as needed)
+
+            // Equipment States Chart (Bar Chart)
+            JFreeChart equipmentStateChart = createEquipmentStateChart();
+            ChartPanel cp1 = new ChartPanel(equipmentStateChart);
+            cp1.setPreferredSize(new Dimension(chartSize, chartSize));
+            add(cp1);
+
+            // Checked Out Equipment Chart (Pie Chart)
+            JFreeChart checkedOutChart = createCheckedOutChart();
+            ChartPanel cp2 = new ChartPanel(checkedOutChart);
+            cp2.setPreferredSize(new Dimension(chartSize, chartSize));
+            add(cp2);
+
+            // Reservations Status Chart (Bar Chart: Pending vs Approved)
+            JFreeChart reservationsStatusChart = createReservationsStatusChart();
+            reservationsStatusChartPanel = new ChartPanel(reservationsStatusChart);
+            reservationsStatusChartPanel.setPreferredSize(new Dimension(chartSize, chartSize));
+            add(reservationsStatusChartPanel);
+
+            // User Reservations Chart (Bar Chart)
+            JFreeChart userReservationsChart = createUserReservationsOverTimeChart();
+            ChartPanel cp4 = new ChartPanel(userReservationsChart);
+            cp4.setPreferredSize(new Dimension(chartSize, chartSize));
+            add(cp4);
+
+            // Set up a Timer to update the Reservations Status Chart every 5 seconds.
+            timer = new Timer(5000, e -> updateReservationsStatusChart());
+            timer.start();
+        }
+
+        // This method updates the Reservations Status Chart dynamically.
+        private void updateReservationsStatusChart() {
+            JFreeChart updatedChart = createReservationsStatusChart();
+            reservationsStatusChartPanel.setChart(updatedChart);
+        }
+
+        // Creates a bar chart for Equipment States.
+        private JFreeChart createEquipmentStateChart() {
+            EquipmentController ec = new EquipmentController();
+            // Use the current user's role for filtering. (Assuming getAllEquipment() accepts a role.)
+            List<Equipment> equipments = ec.getAllEquipment(loggedInUser.getRole());
+            Map<String, Integer> stateCounts = new HashMap<>();
+            for (Equipment eq : equipments) {
+                String state = eq.getState();
+                if (state != null) {
+                    stateCounts.put(state, stateCounts.getOrDefault(state, 0) + 1);
+                }
+            }
+            DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+            for (Map.Entry<String, Integer> entry : stateCounts.entrySet()) {
+                dataset.addValue(entry.getValue(), "Equipment", entry.getKey());
+            }
+            JFreeChart chart = ChartFactory.createBarChart("Equipment States", "State", "Count", dataset);
+            // Enable data labels on the bar chart:
+            chart.getCategoryPlot().getRenderer().setDefaultItemLabelGenerator(new org.jfree.chart.labels.StandardCategoryItemLabelGenerator());
+            chart.getCategoryPlot().getRenderer().setDefaultItemLabelsVisible(true);
+            return chart;
+        }
+
+        // Creates a pie chart for Checked Out Equipment.
+        private JFreeChart createCheckedOutChart() {
+            CheckoutController cc = new CheckoutController();
+            List<String> checkedOut = cc.getCheckedOutEquipment();
+            int checkedOutCount = checkedOut.size();
+            EquipmentController ec = new EquipmentController();
+            List<Equipment> equipments = ec.getAllEquipment(loggedInUser.getRole());
+            int total = equipments.size();
+            int notCheckedOut = total - checkedOutCount;
+            DefaultPieDataset dataset = new DefaultPieDataset();
+            dataset.setValue("Checked Out", checkedOutCount);
+            dataset.setValue("Not Checked Out", notCheckedOut);
+            JFreeChart chart = ChartFactory.createPieChart("Equipment Checked Out", dataset, true, true, false);
+            // (You can add a StandardPieSectionLabelGenerator here for more detailed labels.)
+            return chart;
+        }
+
+        // Creates a bar chart comparing pending and approved reservations.
+        private JFreeChart createReservationsStatusChart() {
+            ReservationController rc = new ReservationController();
+            // Use the current user's ID to filter reservations.
+            List<Reservation> reservations = rc.getAllReservations(loggedInUser.getUserId());
+            int pendingCount = 0;
+            int approvedCount = 0;
+            for (Reservation res : reservations) {
+                String status = res.getStatus();
+                if (status != null) {
+                    if (status.equalsIgnoreCase("Pending")) {
+                        pendingCount++;
+                    } else if (status.equalsIgnoreCase("Approved")) {
+                        approvedCount++;
+                    }
+                }
+            }
+            DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+            dataset.addValue(pendingCount, "Pending", "Reservations");
+            dataset.addValue(approvedCount, "Approved", "Reservations");
+            JFreeChart chart = ChartFactory.createBarChart("Reservations Status", "Status", "Count", dataset);
+            chart.getCategoryPlot().getRenderer().setDefaultItemLabelGenerator(new org.jfree.chart.labels.StandardCategoryItemLabelGenerator());
+            chart.getCategoryPlot().getRenderer().setDefaultItemLabelsVisible(true);
+            return chart;
+        }
+
+        // Creates a bar chart for User Reservations.
+        private JFreeChart createUserReservationsOverTimeChart() {
+            ReservationController rc = new ReservationController();
+            List<Reservation> reservations = rc.getAllReservations(loggedInUser.getUserId());
+            Map<String, Integer> userCounts = new HashMap<>();
+            for (Reservation res : reservations) {
+                String userId = res.getUserId();
+                if (userId != null) {
+                    userCounts.put(userId, userCounts.getOrDefault(userId, 0) + 1);
+                }
+            }
+            DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+            for (Map.Entry<String, Integer> entry : userCounts.entrySet()) {
+                dataset.addValue(entry.getValue(), "Reservations", entry.getKey());
+            }
+            JFreeChart chart = ChartFactory.createBarChart("User Reservations", "User", "Count", dataset);
+            chart.getCategoryPlot().getRenderer().setDefaultItemLabelGenerator(new org.jfree.chart.labels.StandardCategoryItemLabelGenerator());
+            chart.getCategoryPlot().getRenderer().setDefaultItemLabelsVisible(true);
+            return chart;
+        }
+    }
+
+
+    // --------------------------
     // View Profile Panel
     // --------------------------
     class ViewProfilePanel extends JPanel {
         public ViewProfilePanel(User user) {
             setLayout(new GridBagLayout());
-            GridBagConstraints gbc = new GridBagConstraints();
-            gbc.insets = new Insets(10, 10, 10, 10);
-            gbc.fill = GridBagConstraints.HORIZONTAL;
+            GridBagConstraints gridBagConstraints = new GridBagConstraints();
+            gridBagConstraints.insets = new Insets(10, 10, 10, 10);
+            gridBagConstraints.fill = GridBagConstraints.HORIZONTAL;
 
-            JLabel lblUserId = new JLabel("User ID:");
-            JTextField tfUserId = new JTextField(user.getUserId(), 20);
-            tfUserId.setEditable(false);
+            JLabel labelUserId = new JLabel("User ID:");
+            JTextField textFieldUserId = new JTextField(user.getUserId(), 20);
+            textFieldUserId.setEditable(false);
 
-            JLabel lblName = new JLabel("Name:");
-            JTextField tfName = new JTextField(user.getName(), 20);
-            tfName.setEditable(false);
+            JLabel labelName = new JLabel("Name:");
+            JTextField textFieldName = new JTextField(user.getName(), 20);
+            textFieldName.setEditable(false);
 
-            JLabel lblEmail = new JLabel("Email:");
-            JTextField tfEmail = new JTextField(user.getEmail(), 20);
-            tfEmail.setEditable(false);
+            JLabel labelEmail = new JLabel("Email:");
+            JTextField textFieldEmail = new JTextField(user.getEmail(), 20);
+            textFieldEmail.setEditable(false);
 
-            JLabel lblRole = new JLabel("Role:");
-            JTextField tfRole = new JTextField(user.getRole(), 20);
-            tfRole.setEditable(false);
+            JLabel labelRole = new JLabel("Role:");
+            JTextField textFieldRole = new JTextField(user.getRole(), 20);
+            textFieldRole.setEditable(false);
 
-            gbc.gridx = 0; gbc.gridy = 0;
-            add(lblUserId, gbc);
-            gbc.gridx = 1;
-            add(tfUserId, gbc);
-            gbc.gridx = 0; gbc.gridy = 1;
-            add(lblName, gbc);
-            gbc.gridx = 1;
-            add(tfName, gbc);
-            gbc.gridx = 0; gbc.gridy = 2;
-            add(lblEmail, gbc);
-            gbc.gridx = 1;
-            add(tfEmail, gbc);
-            gbc.gridx = 0; gbc.gridy = 3;
-            add(lblRole, gbc);
-            gbc.gridx = 1;
-            add(tfRole, gbc);
+            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 0;
+            add(labelUserId, gridBagConstraints);
+            gridBagConstraints.gridx = 1;
+            add(textFieldUserId, gridBagConstraints);
+            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 1;
+            add(labelName, gridBagConstraints);
+            gridBagConstraints.gridx = 1;
+            add(textFieldName, gridBagConstraints);
+            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 2;
+            add(labelEmail, gridBagConstraints);
+            gridBagConstraints.gridx = 1;
+            add(textFieldEmail, gridBagConstraints);
+            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 3;
+            add(labelRole, gridBagConstraints);
+            gridBagConstraints.gridx = 1;
+            add(textFieldRole, gridBagConstraints);
         }
     }
 
@@ -184,7 +333,11 @@ public class AdminFrame extends JFrame {
 
             // Create content panel (initially with a placeholder)
             contentPanel = new JPanel(new BorderLayout());
-            contentPanel.add(new JLabel("Select an option from the sidebar."), BorderLayout.CENTER);
+            JLabel placeholderLabel = new JLabel("Select an option from the sidebar.");
+            placeholderLabel.setHorizontalAlignment(SwingConstants.CENTER);
+            placeholderLabel.setVerticalAlignment(SwingConstants.CENTER);
+            contentPanel.add(placeholderLabel, BorderLayout.CENTER);
+
 
             // Create JSplitPane and lock its divider.
             JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, sidebar, contentPanel);
@@ -206,13 +359,19 @@ public class AdminFrame extends JFrame {
             final UserController uc = new UserController();
             try {
                 final List<User> users = uc.getAllUsers("Admin");
-                String[] colNames = {"User ID", "Email", "Name", "Role"};
-                DefaultTableModel model = new DefaultTableModel(colNames, 0);
-                for (User u : users) {
-                    Object[] row = { u.getUserId(), u.getEmail(), u.getName(), u.getRole() };
+                String[] columnNames = {"User ID", "Email", "Name", "Role"};
+                DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+                for (User user : users) {
+                    Object[] row = { user.getUserId(), user.getEmail(), user.getName(), user.getRole() };
                     model.addRow(row);
                 }
                 JTable table = new JTable(model);
+
+                // Center text in some columns
+                DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+                centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+                table.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
+
                 contentPanel.removeAll();
                 contentPanel.add(new JScrollPane(table), BorderLayout.CENTER);
                 contentPanel.revalidate();
@@ -230,35 +389,35 @@ public class AdminFrame extends JFrame {
             gbc.fill = GridBagConstraints.HORIZONTAL;
 
             // Row 0: Role selection
-            JLabel lblRole = new JLabel("Role:");
+            JLabel labelRole = new JLabel("Role:");
             String[] roles = {"Student", "Lecturer", "Admin", "MediaStaff"};
-            JComboBox<String> cbRole = new JComboBox<>(roles);
+            JComboBox<String> comboBoxRole = new JComboBox<>(roles);
             gbc.gridx = 0; gbc.gridy = 0;
-            addPanel.add(lblRole, gbc);
+            addPanel.add(labelRole, gbc);
             gbc.gridx = 1;
-            addPanel.add(cbRole, gbc);
+            addPanel.add(comboBoxRole, gbc);
 
             // Row 1: Email
-            JLabel lblEmail = new JLabel("Email:");
-            JTextField tfEmail = new JTextField(20);
+            JLabel labelEmail = new JLabel("Email:");
+            JTextField textFieldEmail = new JTextField(20);
             gbc.gridx = 0; gbc.gridy = 1;
-            addPanel.add(lblEmail, gbc);
+            addPanel.add(labelEmail, gbc);
             gbc.gridx = 1;
-            addPanel.add(tfEmail, gbc);
+            addPanel.add(textFieldEmail, gbc);
 
             // Row 2: Name
-            JLabel lblName = new JLabel("Name:");
-            JTextField tfName = new JTextField(20);
+            JLabel labelName = new JLabel("Name:");
+            JTextField textFieldName = new JTextField(20);
             gbc.gridx = 0; gbc.gridy = 2;
-            addPanel.add(lblName, gbc);
+            addPanel.add(labelName, gbc);
             gbc.gridx = 1;
-            addPanel.add(tfName, gbc);
+            addPanel.add(textFieldName, gbc);
 
             // Row 3: Password
-            JLabel lblPassword = new JLabel("Password:");
+            JLabel labelPassword = new JLabel("Password:");
             JPasswordField pfPassword = new JPasswordField(20);
             gbc.gridx = 0; gbc.gridy = 3;
-            addPanel.add(lblPassword, gbc);
+            addPanel.add(labelPassword, gbc);
             gbc.gridx = 1;
             addPanel.add(pfPassword, gbc);
 
@@ -267,10 +426,9 @@ public class AdminFrame extends JFrame {
             gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 2;
             addPanel.add(extraPanel, gbc);
 
-            // Get the full list of departments from MethodsUtil.
+            // Get full list of departments from MethodsUtil.
             final String[] departments = controller.MethodsUtil.getDepartments();
-
-            // Holder for the Year text field if needed.
+            // Holder for the Year text field (if needed).
             final JTextField[] yearFieldHolder = new JTextField[1];
 
             // Runnable to update extraPanel based on selected role.
@@ -281,48 +439,48 @@ public class AdminFrame extends JFrame {
                 gbcExtra.fill = GridBagConstraints.HORIZONTAL;
                 gbcExtra.gridx = 0;
                 gbcExtra.gridy = 0;
-                String selectedRole = (String) cbRole.getSelectedItem();
+                String selectedRole = (String) comboBoxRole.getSelectedItem();
                 if ("Student".equalsIgnoreCase(selectedRole)) {
                     // For Student, add Department, Course, and Year.
-                    JLabel lblDept = new JLabel("Department:");
-                    JComboBox<String> cbDept = new JComboBox<>(departments);
+                    JLabel labelDept = new JLabel("Department:");
+                    JComboBox<String> comboBoxDept = new JComboBox<>(departments);
                     gbcExtra.gridx = 0; gbcExtra.gridy = 0;
-                    extraPanel.add(lblDept, gbcExtra);
+                    extraPanel.add(labelDept, gbcExtra);
                     gbcExtra.gridx = 1;
-                    extraPanel.add(cbDept, gbcExtra);
+                    extraPanel.add(comboBoxDept, gbcExtra);
 
-                    JLabel lblCourse = new JLabel("Course:");
-                    String selectedDept = (String) cbDept.getSelectedItem();
+                    JLabel labelCourse = new JLabel("Course:");
+                    String selectedDept = (String) comboBoxDept.getSelectedItem();
                     String[] courses = controller.MethodsUtil.getCoursesForDepartment(selectedDept);
                     JComboBox<String> cbCourse = new JComboBox<>(courses);
                     gbcExtra.gridx = 0; gbcExtra.gridy = 1;
-                    extraPanel.add(lblCourse, gbcExtra);
+                    extraPanel.add(labelCourse, gbcExtra);
                     gbcExtra.gridx = 1;
                     extraPanel.add(cbCourse, gbcExtra);
 
                     // Add listener to update courses when department changes.
-                    cbDept.addActionListener(e -> {
-                        String dept = (String) cbDept.getSelectedItem();
+                    comboBoxDept.addActionListener(e -> {
+                        String dept = (String) comboBoxDept.getSelectedItem();
                         String[] newCourses = controller.MethodsUtil.getCoursesForDepartment(dept);
                         cbCourse.setModel(new DefaultComboBoxModel<>(newCourses));
                     });
 
                     // Add Year field.
-                    JLabel lblYear = new JLabel("Year:");
-                    JTextField tfYear = new JTextField(5);
-                    yearFieldHolder[0] = tfYear;
+                    JLabel labelYear = new JLabel("Year:");
+                    JTextField textFieldYear = new JTextField(5);
+                    yearFieldHolder[0] = textFieldYear;
                     gbcExtra.gridx = 0; gbcExtra.gridy = 2;
-                    extraPanel.add(lblYear, gbcExtra);
+                    extraPanel.add(labelYear, gbcExtra);
                     gbcExtra.gridx = 1;
-                    extraPanel.add(tfYear, gbcExtra);
+                    extraPanel.add(textFieldYear, gbcExtra);
                 } else if ("Lecturer".equalsIgnoreCase(selectedRole)) {
                     // For Lecturer, add only Department.
-                    JLabel lblDept = new JLabel("Department:");
-                    JComboBox<String> cbDept = new JComboBox<>(departments);
+                    JLabel labelDept = new JLabel("Department:");
+                    JComboBox<String> comboBoxDept = new JComboBox<>(departments);
                     gbcExtra.gridx = 0; gbcExtra.gridy = 0;
-                    extraPanel.add(lblDept, gbcExtra);
+                    extraPanel.add(labelDept, gbcExtra);
                     gbcExtra.gridx = 1;
-                    extraPanel.add(cbDept, gbcExtra);
+                    extraPanel.add(comboBoxDept, gbcExtra);
                 }
                 extraPanel.revalidate();
                 extraPanel.repaint();
@@ -330,7 +488,7 @@ public class AdminFrame extends JFrame {
 
             // Initial update.
             updateExtraPanel.run();
-            cbRole.addActionListener(e -> updateExtraPanel.run());
+            comboBoxRole.addActionListener(e -> updateExtraPanel.run());
 
             // Row 5: Submit button.
             JButton addUserButton = new JButton("Add User");
@@ -339,79 +497,83 @@ public class AdminFrame extends JFrame {
             addUserButton.setPreferredSize(new Dimension(30, 30));
             addUserButton.setMaximumSize(new Dimension(30, 30));
             addUserButton.setFocusPainted(false);
-            gbc.gridx = 0;
-            gbc.gridy = 5;
-            gbc.gridwidth = 2;
+            gbc.gridx = 0; gbc.gridy = 5; gbc.gridwidth = 2;
             addPanel.add(addUserButton, gbc);
 
             addUserButton.addActionListener(e -> {
-                String email = tfEmail.getText().trim();
-                String name = tfName.getText().trim();
-                String role = (String) cbRole.getSelectedItem();
-                String password = new String(pfPassword.getPassword()).trim();
-                if (email.isEmpty() || name.isEmpty() || password.isEmpty()) {
-                    JOptionPane.showMessageDialog(this, "Email, Name, and Password must be filled.", "Error", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-                User newUser = new User();
-                newUser.setEmail(email);
-                newUser.setName(name);
-                newUser.setRole(role);
-                // Encrypt the password using your back-end PasswordUtils.
-                newUser.setPassword(controller.PasswordUtils.hashPassword(password));
-
-                if ("Student".equalsIgnoreCase(role)) {
-                    // Expect two JComboBox components in extraPanel: first for Department, second for Course.
-                    Component[] comps = extraPanel.getComponents();
-                    String department = "";
-                    String course = "";
-                    int comboCount = 0;
-                    for (Component comp : comps) {
-                        if (comp instanceof JComboBox) {
-                            @SuppressWarnings("unchecked")
-                            JComboBox<String> cb = (JComboBox<String>) comp;
-                            if (comboCount == 0) {
-                                department = (String) cb.getSelectedItem();
-                            } else if (comboCount == 1) {
-                                course = (String) cb.getSelectedItem();
-                            }
-                            comboCount++;
-                        }
+                try {
+                    // Validate email and name using the input validator.
+                    String email = InputValidator.validateEmail(textFieldEmail.getText(), (String) comboBoxRole.getSelectedItem());
+                    String name = InputValidator.validateName(textFieldName.getText());
+                    String role = (String) comboBoxRole.getSelectedItem();
+                    String password = new String(pfPassword.getPassword()).trim();
+                    if (password.isEmpty()) {
+                        JOptionPane.showMessageDialog(this, "Password must be filled.", "Error", JOptionPane.ERROR_MESSAGE);
+                        return;
                     }
-                    newUser.setDepartment(department);
-                    newUser.setCourse(course);
-                    // Retrieve the year.
-                    if (yearFieldHolder[0] != null) {
-                        String yearStr = yearFieldHolder[0].getText().trim();
-                        if (!yearStr.isEmpty()) {
-                            try {
-                                int year = Integer.parseInt(yearStr);
-                                newUser.setYear(year);
-                            } catch (NumberFormatException ex) {
-                                JOptionPane.showMessageDialog(this, "Invalid year entered.", "Error", JOptionPane.ERROR_MESSAGE);
+                    // Create the new user.
+                    User newUser = new User();
+                    newUser.setEmail(email);
+                    newUser.setName(name);
+                    newUser.setRole(role);
+                    newUser.setPassword(controller.PasswordUtils.hashPassword(password));
+
+                    // Process extra fields for Student and Lecturer.
+                    if ("Student".equalsIgnoreCase(role)) {
+                        // Expect two JComboBox components in extraPanel: first for Department, second for Course.
+                        Component[] components = extraPanel.getComponents();
+                        String department = "";
+                        String course = "";
+                        int comboCount = 0;
+                        for (Component comp : components) {
+                            if (comp instanceof JComboBox) {
+                                JComboBox<String> cb = (JComboBox<String>) comp;
+                                if (comboCount == 0) {
+                                    department = (String) cb.getSelectedItem();
+                                } else if (comboCount == 1) {
+                                    course = (String) cb.getSelectedItem();
+                                }
+                                comboCount++;
+                            }
+                        }
+                        newUser.setDepartment(department);
+                        newUser.setCourse(course);
+                        // Retrieve and validate the year.
+                        if (yearFieldHolder[0] != null) {
+                            String yearStr = yearFieldHolder[0].getText().trim();
+                            if (!yearStr.isEmpty()) {
+                                try {
+                                    int year = Integer.parseInt(yearStr);
+                                    newUser.setYear(year);
+                                } catch (NumberFormatException ex) {
+                                    JOptionPane.showMessageDialog(this, "Invalid year entered.", "Error", JOptionPane.ERROR_MESSAGE);
+                                    return;
+                                }
+                            } else {
+                                JOptionPane.showMessageDialog(this, "Year must be filled for a student.", "Error", JOptionPane.ERROR_MESSAGE);
                                 return;
                             }
-                        } else {
-                            JOptionPane.showMessageDialog(this, "Year must be filled for a student.", "Error", JOptionPane.ERROR_MESSAGE);
-                            return;
+                        }
+                    } else if ("Lecturer".equalsIgnoreCase(role)) {
+                        // For Lecturer, expect one JComboBox for Department.
+                        for (Component comp : extraPanel.getComponents()) {
+                            if (comp instanceof JComboBox) {
+                                JComboBox<String> cb = (JComboBox<String>) comp;
+                                newUser.setDepartment((String) cb.getSelectedItem());
+                            }
                         }
                     }
-                } else if ("Lecturer".equalsIgnoreCase(role)) {
-                    // Expect one JComboBox for Department.
-                    for (Component comp : extraPanel.getComponents()) {
-                        if (comp instanceof JComboBox) {
-                            @SuppressWarnings("unchecked")
-                            JComboBox<String> cb = (JComboBox<String>) comp;
-                            newUser.setDepartment((String) cb.getSelectedItem());
-                        }
-                    }
+
+                    // Call the UserController to add the user.
+                    UserController userController = new UserController();
+                    boolean success = userController.addUser(newUser, adminId);
+                    if (success)
+                        JOptionPane.showMessageDialog(this, "User added successfully.");
+                    else
+                        JOptionPane.showMessageDialog(this, "Failed to add user.");
+                } catch (exception.InvalidInputException ex) {
+                    JOptionPane.showMessageDialog(this, ex.getMessage(), "Validation Error", JOptionPane.ERROR_MESSAGE);
                 }
-                UserController uc = new UserController();
-                boolean success = uc.addUser(newUser, adminId);
-                if (success)
-                    JOptionPane.showMessageDialog(this, "User added successfully.");
-                else
-                    JOptionPane.showMessageDialog(this, "Failed to add user.");
             });
 
             contentPanel.removeAll();
@@ -421,21 +583,24 @@ public class AdminFrame extends JFrame {
         }
 
 
-
-
-
         private void loadUpdateUser() {
-            final UserController uc = new UserController();
+            final UserController userController = new UserController();
             try {
-                final List<User> users = uc.getAllUsers("Admin");
+                final List<User> users = userController.getAllUsers("Admin");
                 JPanel updatePanel = new JPanel(new BorderLayout());
-                String[] colNames = {"User ID", "Email", "Name", "Role"};
-                final DefaultTableModel model = new DefaultTableModel(colNames, 0);
-                for (User u : users) {
-                    Object[] row = { u.getUserId(), u.getEmail(), u.getName(), u.getRole() };
+                String[] columnNames = {"User ID", "Email", "Name", "Role"};
+                final DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+                for (User user : users) {
+                    Object[] row = { user.getUserId(), user.getEmail(), user.getName(), user.getRole() };
                     model.addRow(row);
                 }
                 final JTable table = new JTable(model);
+
+                // Center text in some columns
+                DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+                centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+                table.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
+
                 JScrollPane scrollPane = new JScrollPane(table);
                 updatePanel.add(scrollPane, BorderLayout.CENTER);
                 JButton updateUserButton = new JButton("Update Selected User");
@@ -453,23 +618,23 @@ public class AdminFrame extends JFrame {
                     }
                     String userId = (String) model.getValueAt(selectedRow, 0);
                     try {
-                        User selectedUser = uc.getUserById(userId);
+                        User selectedUser = userController.getUserById(userId);
                         if(selectedUser == null){
                             JOptionPane.showMessageDialog(this, "User not found.");
                             return;
                         }
                         JPanel editPanel = new JPanel(new GridBagLayout());
-                        GridBagConstraints gbc = new GridBagConstraints();
-                        gbc.insets = new Insets(5, 5, 5, 5);
-                        gbc.fill = GridBagConstraints.HORIZONTAL;
+                        GridBagConstraints gridBagConstraints = new GridBagConstraints();
+                        gridBagConstraints.insets = new Insets(5, 5, 5, 5);
+                        gridBagConstraints.fill = GridBagConstraints.HORIZONTAL;
 
-                        JLabel lblEmail = new JLabel("Email:");
-                        JTextField tfEmail = new JTextField(selectedUser.getEmail(), 20);
-                        JLabel lblName = new JLabel("Name:");
-                        JTextField tfName = new JTextField(selectedUser.getName(), 20);
-                        JLabel lblRole = new JLabel("Role:");
-                        JTextField tfRole = new JTextField(selectedUser.getRole(), 20);
-                        tfRole.setEditable(false); // Role not editable in update
+                        JLabel labelEmail = new JLabel("Email:");
+                        JTextField textFieldEmail = new JTextField(selectedUser.getEmail(), 20);
+                        JLabel labelName = new JLabel("Name:");
+                        JTextField textFieldName = new JTextField(selectedUser.getName(), 20);
+                        JLabel labelRole = new JLabel("Role:");
+                        JTextField textFieldRole = new JTextField(selectedUser.getRole(), 20);
+                        textFieldRole.setEditable(false); // Role not editable in update
                         JButton updateUserSubmitButton = new JButton("Update User");
                         updateUserSubmitButton.setBackground(Color.LIGHT_GRAY);
                         updateUserSubmitButton.setForeground(Color.DARK_GRAY);
@@ -477,29 +642,38 @@ public class AdminFrame extends JFrame {
                         updateUserButton.setMaximumSize(new Dimension(30, 30));
                         updateUserSubmitButton.setFocusPainted(false);
 
-                        gbc.gridx = 0; gbc.gridy = 0;
-                        editPanel.add(lblEmail, gbc);
-                        gbc.gridx = 1;
-                        editPanel.add(tfEmail, gbc);
-                        gbc.gridx = 0; gbc.gridy = 1;
-                        editPanel.add(lblName, gbc);
-                        gbc.gridx = 1;
-                        editPanel.add(tfName, gbc);
-                        gbc.gridx = 0; gbc.gridy = 2;
-                        editPanel.add(lblRole, gbc);
-                        gbc.gridx = 1;
-                        editPanel.add(tfRole, gbc);
-                        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2;
-                        editPanel.add(updateUserSubmitButton, gbc);
+                        gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 0;
+                        editPanel.add(labelEmail, gridBagConstraints);
+                        gridBagConstraints.gridx = 1;
+                        editPanel.add(textFieldEmail, gridBagConstraints);
+                        gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 1;
+                        editPanel.add(labelName, gridBagConstraints);
+                        gridBagConstraints.gridx = 1;
+                        editPanel.add(textFieldName, gridBagConstraints);
+                        gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 2;
+                        editPanel.add(labelRole, gridBagConstraints);
+                        gridBagConstraints.gridx = 1;
+                        editPanel.add(textFieldRole, gridBagConstraints);
+                        gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 3; gridBagConstraints.gridwidth = 2;
+                        editPanel.add(updateUserSubmitButton, gridBagConstraints);
 
                         updateUserSubmitButton.addActionListener(ev -> {
-                            selectedUser.setEmail(tfEmail.getText().trim());
-                            selectedUser.setName(tfName.getText().trim());
-                            boolean success = uc.updateUser(selectedUser, adminId);
-                            if(success)
-                                JOptionPane.showMessageDialog(this, "User updated successfully.");
-                            else
-                                JOptionPane.showMessageDialog(this, "Failed to update user.");
+
+                            try{
+                                String email = InputValidator.validateEmail(textFieldEmail.getText(), textFieldRole.getText());
+                                String name = InputValidator.validateName(textFieldName.getText());
+
+                                selectedUser.setEmail(email);
+                                selectedUser.setName(name);
+                                boolean success = userController.updateUser(selectedUser, adminId);
+                                if(success)
+                                    JOptionPane.showMessageDialog(this, "User updated successfully.");
+                                else
+                                    JOptionPane.showMessageDialog(this, "Failed to update user.");
+                            }catch(exception.InvalidInputException ex){
+                                JOptionPane.showMessageDialog(this, ex.getMessage(), "Validation Error", JOptionPane.ERROR_MESSAGE);
+                            }
+
                         });
 
                         contentPanel.removeAll();
@@ -520,17 +694,23 @@ public class AdminFrame extends JFrame {
         }
 
         private void loadDeleteUser() {
-            final UserController uc = new UserController();
+            final UserController userController = new UserController();
             try {
-                final List<User> users = uc.getAllUsers("Admin");
+                final List<User> users = userController.getAllUsers("Admin");
                 JPanel deletePanel = new JPanel(new BorderLayout());
-                String[] colNames = {"User ID", "Email", "Name", "Role"};
-                final DefaultTableModel model = new DefaultTableModel(colNames, 0);
-                for (User u : users) {
-                    Object[] row = { u.getUserId(), u.getEmail(), u.getName(), u.getRole() };
+                String[] columnNames = {"User ID", "Email", "Name", "Role"};
+                final DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+                for (User user : users) {
+                    Object[] row = { user.getUserId(), user.getEmail(), user.getName(), user.getRole() };
                     model.addRow(row);
                 }
                 final JTable table = new JTable(model);
+
+                // Center text in some columns
+                DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+                centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+                table.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
+
                 JScrollPane scrollPane = new JScrollPane(table);
                 deletePanel.add(scrollPane, BorderLayout.CENTER);
                 JButton deleteUserButton = new JButton("Delete Selected User");
@@ -549,7 +729,7 @@ public class AdminFrame extends JFrame {
                     String userId = (String) model.getValueAt(selectedRow, 0);
                     int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete user " + userId + "?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
                     if(confirm == JOptionPane.YES_OPTION){
-                        boolean success = uc.deleteUser(userId, adminId);
+                        boolean success = userController.deleteUser(userId, adminId);
                         if(success){
                             JOptionPane.showMessageDialog(this, "User deleted successfully.");
                             model.removeRow(selectedRow);
@@ -598,7 +778,11 @@ public class AdminFrame extends JFrame {
             sidebar.add(buttonDeleteEquipment);
 
             contentPanel = new JPanel(new BorderLayout());
-            contentPanel.add(new JLabel("Select an option from the sidebar."), BorderLayout.CENTER);
+            JLabel placeholderLabel = new JLabel("Select an option from the sidebar.");
+            placeholderLabel.setHorizontalAlignment(SwingConstants.CENTER);
+            placeholderLabel.setVerticalAlignment(SwingConstants.CENTER);
+            contentPanel.add(placeholderLabel, BorderLayout.CENTER);
+
 
             JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, sidebar, contentPanel);
             splitPane.setDividerLocation(200);
@@ -640,15 +824,22 @@ public class AdminFrame extends JFrame {
         }
 
         private void loadViewAllEquipment() throws DatabaseOperationException {
-            EquipmentController ec = new EquipmentController();
-            List<Equipment> equipments = ec.getAllEquipment("Admin");
+            EquipmentController equipmentController = new EquipmentController();
+            List<Equipment> equipments = equipmentController.getAllEquipment("Admin");
             String[] colNames = {"Equipment ID", "Name", "Type", "Description", "Status", "State"};
             DefaultTableModel model = new DefaultTableModel(colNames, 0);
-            for (Equipment eq : equipments) {
-                Object[] row = { eq.getEquipmentId(), eq.getName(), eq.getType(), eq.getDescription(), eq.getStatus(), eq.getState() };
+            for (Equipment equipment : equipments) {
+                Object[] row = { equipment.getEquipmentId(), equipment.getName(), equipment.getType(), equipment.getDescription(), equipment.getStatus(), equipment.getState() };
                 model.addRow(row);
             }
             JTable table = new JTable(model);
+
+            // Center text in some columns
+            DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+            centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+            table.getColumnModel().getColumn(4).setCellRenderer(centerRenderer);
+            table.getColumnModel().getColumn(5).setCellRenderer(centerRenderer);
+
             contentPanel.removeAll();
             contentPanel.add(new JScrollPane(table), BorderLayout.CENTER);
             contentPanel.revalidate();
@@ -659,15 +850,22 @@ public class AdminFrame extends JFrame {
             String[] types = {"Audio Recorder", "Camera", "Drone", "Laptop", "Lighting", "Projector", "VR Headset", "Other"};
             String type = (String) JOptionPane.showInputDialog(this, "Select Equipment Type:", "Equipment Type", JOptionPane.QUESTION_MESSAGE, null, types, types[0]);
             if(type == null) return;
-            EquipmentController ec = new EquipmentController();
-            List<Equipment> equipments = ec.getEquipmentByType(type, loggedInUser.getRole());
-            String[] colNames = {"Equipment ID", "Name", "Type", "Description", "Status", "State"};
-            DefaultTableModel model = new DefaultTableModel(colNames, 0);
-            for (Equipment eq : equipments) {
-                Object[] row = { eq.getEquipmentId(), eq.getName(), eq.getType(), eq.getDescription(), eq.getStatus(), eq.getState() };
+            EquipmentController equipmentController = new EquipmentController();
+            List<Equipment> equipments = equipmentController.getEquipmentByType(type, loggedInUser.getRole());
+            String[] columnNames = {"Equipment ID", "Name", "Type", "Description", "Status", "State"};
+            DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+            for (Equipment equipment : equipments) {
+                Object[] row = { equipment.getEquipmentId(), equipment.getName(), equipment.getType(), equipment.getDescription(), equipment.getStatus(), equipment.getState() };
                 model.addRow(row);
             }
             JTable table = new JTable(model);
+
+            // Center text in some columns
+            DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+            centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+            table.getColumnModel().getColumn(4).setCellRenderer(centerRenderer);
+            table.getColumnModel().getColumn(5).setCellRenderer(centerRenderer);
+
             contentPanel.removeAll();
             contentPanel.add(new JScrollPane(table), BorderLayout.CENTER);
             contentPanel.revalidate();
@@ -676,62 +874,71 @@ public class AdminFrame extends JFrame {
 
         private void loadAddEquipment() {
             JPanel addPanel = new JPanel(new GridBagLayout());
-            GridBagConstraints gbc = new GridBagConstraints();
-            gbc.insets = new Insets(5,5,5,5);
-            gbc.fill = GridBagConstraints.HORIZONTAL;
+            GridBagConstraints gridBagConstraints = new GridBagConstraints();
+            gridBagConstraints.insets = new Insets(5,5,5,5);
+            gridBagConstraints.fill = GridBagConstraints.HORIZONTAL;
 
-            JLabel lblName = new JLabel("Name:");
-            JTextField tfName = new JTextField(20);
-            JLabel lblType = new JLabel("Type:");
+            JLabel labelName = new JLabel("Name:");
+            JTextField textFieldName = new JTextField(20);
+            JLabel labelType = new JLabel("Type:");
             String[] types = {"Audio Recorder", "Camera", "Drone", "Laptop", "Lighting", "Projector", "VR Headset", "Other"};
-            JComboBox<String> cbType = new JComboBox<>(types);
-            JLabel lblDescription = new JLabel("Description:");
-            JTextField tfDescription = new JTextField(20);
-            JLabel lblState = new JLabel("State:");
+            JComboBox<String> comboBoxType = new JComboBox<>(types);
+            JLabel labelDescription = new JLabel("Description:");
+            JTextField textFieldDescription = new JTextField(20);
+            JLabel labelState = new JLabel("State:");
             String[] states = {"New", "Good", "Fair", "Poor"};
-            JComboBox<String> cbState = new JComboBox<>(states);
+            JComboBox<String> comboBoxState = new JComboBox<>(states);
 
-            JButton btnSubmit = new JButton("Add Equipment");
-            gbc.gridx = 0; gbc.gridy = 0;
-            addPanel.add(lblName, gbc);
-            gbc.gridx = 1;
-            addPanel.add(tfName, gbc);
-            gbc.gridx = 0; gbc.gridy = 1;
-            addPanel.add(lblType, gbc);
-            gbc.gridx = 1;
-            addPanel.add(cbType, gbc);
-            gbc.gridx = 0; gbc.gridy = 2;
-            addPanel.add(lblDescription, gbc);
-            gbc.gridx = 1;
-            addPanel.add(tfDescription, gbc);
-            gbc.gridx = 0; gbc.gridy = 3;
-            addPanel.add(lblState, gbc);
-            gbc.gridx = 1;
-            addPanel.add(cbState, gbc);
-            gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 2;
-            addPanel.add(btnSubmit, gbc);
+            JButton addEquipmentButton = new JButton("Add Equipment");
+            addEquipmentButton.setBackground(Color.LIGHT_GRAY);
+            addEquipmentButton.setForeground(Color.DARK_GRAY);
+            addEquipmentButton.setPreferredSize(new Dimension(30, 30));
+            addEquipmentButton.setMaximumSize(new Dimension(30, 30));
+            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 0;
+            addPanel.add(labelName, gridBagConstraints);
+            gridBagConstraints.gridx = 1;
+            addPanel.add(textFieldName, gridBagConstraints);
+            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 1;
+            addPanel.add(labelType, gridBagConstraints);
+            gridBagConstraints.gridx = 1;
+            addPanel.add(comboBoxType, gridBagConstraints);
+            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 2;
+            addPanel.add(labelDescription, gridBagConstraints);
+            gridBagConstraints.gridx = 1;
+            addPanel.add(textFieldDescription, gridBagConstraints);
+            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 3;
+            addPanel.add(labelState, gridBagConstraints);
+            gridBagConstraints.gridx = 1;
+            addPanel.add(comboBoxState, gridBagConstraints);
+            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 4; gridBagConstraints.gridwidth = 2;
+            addPanel.add(addEquipmentButton, gridBagConstraints);
 
-            btnSubmit.addActionListener(e -> {
-                String name = tfName.getText().trim();
-                String type = (String) cbType.getSelectedItem();
-                String description = tfDescription.getText().trim();
-                String state = (String) cbState.getSelectedItem();
-                if(name.isEmpty()){
-                    JOptionPane.showMessageDialog(this, "Name cannot be empty.", "Error", JOptionPane.ERROR_MESSAGE);
-                    return;
+            addEquipmentButton.addActionListener(e -> {
+                try{
+                    String name = InputValidator.validateEquipmentName(textFieldName.getText());
+                    String type = (String) comboBoxType.getSelectedItem();
+                    String description = InputValidator.validateEquipmentDescription(textFieldDescription.getText());
+                    String state = (String) comboBoxState.getSelectedItem();
+                    if(name.isEmpty()){
+                        JOptionPane.showMessageDialog(this, "Name cannot be empty.", "Error", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+                    Equipment equipment = new Equipment();
+                    equipment.setName(name);
+                    equipment.setType(type);
+                    equipment.setDescription(description);
+                    equipment.setState(state);
+                    equipment.setStatus("Available");
+                    EquipmentController equipmentController = new EquipmentController();
+                    boolean success = equipmentController.addEquipment(equipment, adminId);
+                    if(success)
+                        JOptionPane.showMessageDialog(this, "Equipment added successfully.");
+                    else
+                        JOptionPane.showMessageDialog(this, "Failed to add equipment.");
+                }catch(exception.InvalidInputException ex){
+                    JOptionPane.showMessageDialog(this, ex.getMessage(), "Validation Error", JOptionPane.ERROR_MESSAGE);
                 }
-                Equipment eq = new Equipment();
-                eq.setName(name);
-                eq.setType(type);
-                eq.setDescription(description);
-                eq.setState(state);
-                eq.setStatus("Available");
-                EquipmentController ec = new EquipmentController();
-                boolean success = ec.addEquipment(eq, adminId);
-                if(success)
-                    JOptionPane.showMessageDialog(this, "Equipment added successfully.");
-                else
-                    JOptionPane.showMessageDialog(this, "Failed to add equipment.");
+
             });
 
             contentPanel.removeAll();
@@ -741,81 +948,109 @@ public class AdminFrame extends JFrame {
         }
 
         private void loadUpdateEquipment() throws DatabaseOperationException {
-            EquipmentController ec = new EquipmentController();
-            List<Equipment> equipments = ec.getAllEquipment("Admin");
+            EquipmentController equipmentController = new EquipmentController();
+            List<Equipment> equipments = equipmentController.getAllEquipment("Admin");
             JPanel updatePanel = new JPanel(new BorderLayout());
-            String[] colNames = {"Equipment ID", "Name", "Type", "Description", "Status", "State"};
-            final DefaultTableModel model = new DefaultTableModel(colNames, 0);
-            for (Equipment eq : equipments) {
-                Object[] row = { eq.getEquipmentId(), eq.getName(), eq.getType(), eq.getDescription(), eq.getStatus(), eq.getState() };
-                model.addRow(row);
+            String[] columnNames = {"Equipment ID", "Name", "Type", "Description", "Status", "State"};
+            final DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+            for (Equipment equipment : equipments) {
+                if ("Available".equalsIgnoreCase(equipment.getStatus())) {  // Only include available equipment
+                    Object[] row = { equipment.getEquipmentId(), equipment.getName(), equipment.getType(),
+                            equipment.getDescription(), equipment.getStatus(), equipment.getState() };
+                    model.addRow(row);
+                }
             }
             final JTable table = new JTable(model);
+
+            // Center text in some columns
+            DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+            centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+            table.getColumnModel().getColumn(4).setCellRenderer(centerRenderer);
+            table.getColumnModel().getColumn(5).setCellRenderer(centerRenderer);
+
             JScrollPane scrollPane = new JScrollPane(table);
             updatePanel.add(scrollPane, BorderLayout.CENTER);
-            JButton btnEdit = new JButton("Edit Selected Equipment");
-            updatePanel.add(btnEdit, BorderLayout.SOUTH);
-            btnEdit.addActionListener(e -> {
+            JButton updateEquipmentButton = new JButton("Update Selected Equipment");
+            updateEquipmentButton.setBackground(Color.LIGHT_GRAY);
+            updateEquipmentButton.setForeground(Color.DARK_GRAY);
+            updateEquipmentButton.setPreferredSize(new Dimension(30, 30));
+            updateEquipmentButton.setMaximumSize(new Dimension(30, 30));
+            updatePanel.add(updateEquipmentButton, BorderLayout.SOUTH);
+            updateEquipmentButton.addActionListener(e -> {
                 int selectedRow = table.getSelectedRow();
                 if(selectedRow < 0){
                     JOptionPane.showMessageDialog(this, "Please select equipment to edit.");
                     return;
                 }
-                String eqId = (String) model.getValueAt(selectedRow, 0);
-                Equipment selectedEq = equipments.stream().filter(eq -> eq.getEquipmentId().equals(eqId)).findFirst().orElse(null);
-                if(selectedEq == null){
+                String equipmentId = (String) model.getValueAt(selectedRow, 0);
+                Equipment selectedEquipment = equipments.stream().filter(equipment -> equipment.getEquipmentId().equals(equipmentId)).findFirst().orElse(null);
+                if(selectedEquipment == null){
                     JOptionPane.showMessageDialog(this, "Equipment not found.");
                     return;
                 }
                 JPanel editPanel = new JPanel(new GridBagLayout());
-                GridBagConstraints gbc = new GridBagConstraints();
-                gbc.insets = new Insets(5,5,5,5);
-                gbc.fill = GridBagConstraints.HORIZONTAL;
+                GridBagConstraints gridBagConstraints = new GridBagConstraints();
+                gridBagConstraints.insets = new Insets(5,5,5,5);
+                gridBagConstraints.fill = GridBagConstraints.HORIZONTAL;
 
-                JLabel lblName = new JLabel("Name:");
-                JTextField tfName = new JTextField(selectedEq.getName(), 20);
-                JLabel lblType = new JLabel("Type:");
+                JLabel labelName = new JLabel("Name:");
+                JTextField textFieldName = new JTextField(selectedEquipment.getName(), 20);
+                JLabel labelType = new JLabel("Type:");
                 String[] types = {"Audio Recorder", "Camera", "Drone", "Laptop", "Lighting", "Projector", "VR Headset", "Other"};
-                JComboBox<String> cbType = new JComboBox<>(types);
-                cbType.setSelectedItem(selectedEq.getType());
-                JLabel lblDescription = new JLabel("Description:");
-                JTextField tfDescription = new JTextField(selectedEq.getDescription(), 20);
-                JLabel lblState = new JLabel("State:");
+                JComboBox<String> comboBoxType = new JComboBox<>(types);
+                comboBoxType.setSelectedItem(selectedEquipment.getType());
+                JLabel labelDescription = new JLabel("Description:");
+                JTextField textFieldDescription = new JTextField(selectedEquipment.getDescription(), 20);
+                JLabel labelState = new JLabel("State:");
                 String[] states = {"New", "Good", "Fair", "Poor"};
-                JComboBox<String> cbState = new JComboBox<>(states);
-                cbState.setSelectedItem(selectedEq.getState());
+                JComboBox<String> comboBoxState = new JComboBox<>(states);
+                comboBoxState.setSelectedItem(selectedEquipment.getState());
 
-                JButton btnUpdateEquipment = new JButton("Update Equipment");
+                JButton updateEquipmentSubmitButton = new JButton("Update Equipment");
+                updateEquipmentSubmitButton.setBackground(Color.LIGHT_GRAY);
+                updateEquipmentSubmitButton.setForeground(Color.DARK_GRAY);
+                updateEquipmentSubmitButton.setPreferredSize(new Dimension(30, 30));
+                updateEquipmentSubmitButton.setMaximumSize(new Dimension(30, 30));
+                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 0;
+                editPanel.add(labelName, gridBagConstraints);
+                gridBagConstraints.gridx = 1;
+                editPanel.add(textFieldName, gridBagConstraints);
+                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 1;
+                editPanel.add(labelType, gridBagConstraints);
+                gridBagConstraints.gridx = 1;
+                editPanel.add(comboBoxType, gridBagConstraints);
+                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 2;
+                editPanel.add(labelDescription, gridBagConstraints);
+                gridBagConstraints.gridx = 1;
+                editPanel.add(textFieldDescription, gridBagConstraints);
+                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 3;
+                editPanel.add(labelState, gridBagConstraints);
+                gridBagConstraints.gridx = 1;
+                editPanel.add(comboBoxState, gridBagConstraints);
+                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 4; gridBagConstraints.gridwidth = 2;
+                editPanel.add(updateEquipmentSubmitButton, gridBagConstraints);
 
-                gbc.gridx = 0; gbc.gridy = 0;
-                editPanel.add(lblName, gbc);
-                gbc.gridx = 1;
-                editPanel.add(tfName, gbc);
-                gbc.gridx = 0; gbc.gridy = 1;
-                editPanel.add(lblType, gbc);
-                gbc.gridx = 1;
-                editPanel.add(cbType, gbc);
-                gbc.gridx = 0; gbc.gridy = 2;
-                editPanel.add(lblDescription, gbc);
-                gbc.gridx = 1;
-                editPanel.add(tfDescription, gbc);
-                gbc.gridx = 0; gbc.gridy = 3;
-                editPanel.add(lblState, gbc);
-                gbc.gridx = 1;
-                editPanel.add(cbState, gbc);
-                gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 2;
-                editPanel.add(btnUpdateEquipment, gbc);
+                updateEquipmentSubmitButton.addActionListener(ev -> {
+                    try{
+                        String name = InputValidator.validateEquipmentName(textFieldName.getText());
+                        String type = (String) comboBoxType.getSelectedItem();
+                        String description = InputValidator.validateEquipmentDescription(textFieldDescription.getText());
+                        String state = (String) comboBoxState.getSelectedItem();
+                        selectedEquipment.setName(name);
+                        selectedEquipment.setType(type);
+                        selectedEquipment.setDescription(description);
+                        selectedEquipment.setState(state);
+                        boolean success = equipmentController.updateEquipment(selectedEquipment, adminId);
+                        if(success)
+                            JOptionPane.showMessageDialog(this, "Equipment updated successfully.");
+                        else
+                            JOptionPane.showMessageDialog(this, "Failed to update equipment.");
 
-                btnUpdateEquipment.addActionListener(ev -> {
-                    selectedEq.setName(tfName.getText().trim());
-                    selectedEq.setType((String) cbType.getSelectedItem());
-                    selectedEq.setDescription(tfDescription.getText().trim());
-                    selectedEq.setState((String) cbState.getSelectedItem());
-                    boolean success = ec.updateEquipment(selectedEq, adminId);
-                    if(success)
-                        JOptionPane.showMessageDialog(this, "Equipment updated successfully.");
-                    else
-                        JOptionPane.showMessageDialog(this, "Failed to update equipment.");
+                    }catch (exception.InvalidInputException ex){
+                        JOptionPane.showMessageDialog(this, ex.getMessage(), "Validation Error", JOptionPane.ERROR_MESSAGE);
+
+                    }
+
                 });
 
                 contentPanel.removeAll();
@@ -830,30 +1065,41 @@ public class AdminFrame extends JFrame {
         }
 
         private void loadDeleteEquipment() throws DatabaseOperationException {
-            EquipmentController ec = new EquipmentController();
-            List<Equipment> equipments = ec.getAllEquipment("Admin");
+            EquipmentController equipmentController = new EquipmentController();
+            List<Equipment> equipments = equipmentController.getAllEquipment("Admin");
             JPanel deletePanel = new JPanel(new BorderLayout());
-            String[] colNames = {"Equipment ID", "Name", "Type", "Description", "Status", "State"};
-            final DefaultTableModel model = new DefaultTableModel(colNames, 0);
-            for (Equipment eq : equipments) {
-                Object[] row = { eq.getEquipmentId(), eq.getName(), eq.getType(), eq.getDescription(), eq.getStatus(), eq.getState() };
+            String[] columnNames = {"Equipment ID", "Name", "Type", "Description", "Status", "State"};
+            final DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+            for (Equipment equipment : equipments) {
+                Object[] row = { equipment.getEquipmentId(), equipment.getName(), equipment.getType(), equipment.getDescription(), equipment.getStatus(), equipment.getState() };
                 model.addRow(row);
             }
             final JTable table = new JTable(model);
+
+            // Center text in some columns
+            DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+            centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+            table.getColumnModel().getColumn(4).setCellRenderer(centerRenderer);
+            table.getColumnModel().getColumn(5).setCellRenderer(centerRenderer);
+
             JScrollPane scrollPane = new JScrollPane(table);
             deletePanel.add(scrollPane, BorderLayout.CENTER);
-            JButton btnDelete = new JButton("Delete Selected Equipment");
-            deletePanel.add(btnDelete, BorderLayout.SOUTH);
-            btnDelete.addActionListener(e -> {
+            JButton deleteEquipmentButton = new JButton("Delete Selected Equipment");
+            deleteEquipmentButton.setBackground(Color.LIGHT_GRAY);
+            deleteEquipmentButton.setForeground(Color.DARK_GRAY);
+            deleteEquipmentButton.setPreferredSize(new Dimension(30, 30));
+            deleteEquipmentButton.setMaximumSize(new Dimension(30, 30));
+            deletePanel.add(deleteEquipmentButton, BorderLayout.SOUTH);
+            deleteEquipmentButton.addActionListener(e -> {
                 int selectedRow = table.getSelectedRow();
                 if(selectedRow < 0){
                     JOptionPane.showMessageDialog(this, "Please select equipment to delete.");
                     return;
                 }
-                String eqId = (String) model.getValueAt(selectedRow, 0);
-                int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete equipment " + eqId + "?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
+                String equipmentId = (String) model.getValueAt(selectedRow, 0);
+                int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete equipment " + equipmentId + "?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
                 if(confirm == JOptionPane.YES_OPTION){
-                    boolean success = ec.deleteEquipment(eqId, adminId);
+                    boolean success = equipmentController.deleteEquipment(equipmentId, adminId);
                     if(success){
                         JOptionPane.showMessageDialog(this, "Equipment deleted successfully.");
                         model.removeRow(selectedRow);
@@ -878,89 +1124,315 @@ public class AdminFrame extends JFrame {
 
         public ReservationsManagementPanel(String adminId) {
             this.adminId = adminId;
-            setLayout(new BorderLayout());
-            JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-            splitPane.setDividerLocation(200);
 
             JPanel sidebar = new JPanel();
             sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
-            JButton btnApproval = new JButton("Approve/Reject Reservations");
-            JButton btnCheckOut = new JButton("Check-Out Equipment");
-            JButton btnCheckIn = new JButton("Check-In Equipment");
-            sidebar.add(btnApproval);
-            sidebar.add(Box.createRigidArea(new Dimension(0, 10)));
-            sidebar.add(btnCheckOut);
-            sidebar.add(Box.createRigidArea(new Dimension(0, 10)));
-            sidebar.add(btnCheckIn);
+            sidebar.setBackground(Color.DARK_GRAY);
+
+            JButton buttonApproval = createMenuItem("Approve/Reject Reservations");
+            JButton buttonCheckOut = createMenuItem("Check-Out Equipment");
+            JButton buttonCheckIn = createMenuItem("Check-In Equipment");
+
+            sidebar.add(buttonApproval);
+            sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
+            sidebar.add(buttonCheckOut);
+            sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
+            sidebar.add(buttonCheckIn);
 
             contentPanel = new JPanel(new BorderLayout());
-            contentPanel.add(new JLabel("Select an option from the sidebar."), BorderLayout.CENTER);
+            JLabel placeholderLabel = new JLabel("Select an option from the sidebar.");
+            placeholderLabel.setHorizontalAlignment(SwingConstants.CENTER);
+            placeholderLabel.setVerticalAlignment(SwingConstants.CENTER);
+            contentPanel.add(placeholderLabel, BorderLayout.CENTER);
 
-            splitPane.setLeftComponent(sidebar);
-            splitPane.setRightComponent(contentPanel);
+
+
+            JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, sidebar, contentPanel);
+            splitPane.setDividerLocation(200);
+            splitPane.setEnabled(false);
+            splitPane.setDividerSize(0);
+
+
+            setLayout(new BorderLayout());
             add(splitPane, BorderLayout.CENTER);
 
-            btnApproval.addActionListener(e -> {
+            buttonApproval.addActionListener(e -> {
                 try {
                     loadApproval();
                 } catch (DatabaseOperationException ex) {
                     throw new RuntimeException(ex);
                 }
             });
-            btnCheckOut.addActionListener(e -> loadCheckOut());
-            btnCheckIn.addActionListener(e -> loadCheckIn());
+            buttonCheckOut.addActionListener(e -> loadCheckOut());
+            buttonCheckIn.addActionListener(e -> loadCheckIn());
         }
 
         private void loadApproval() throws DatabaseOperationException {
-            ReservationController rc = new ReservationController();
-            // The actual back-end method expects two arguments.
-            List<Reservation> reservations = rc.getAllReservations(adminId);
-            String[] colNames = {"Reservation ID", "User", "Equipment", "Reservation Date", "Return Date", "Status"};
-            DefaultTableModel model = new DefaultTableModel(colNames, 0);
-            for (Reservation res : reservations) {
-                Object[] row = { res.getReservationId(), res.getUserId(), res.getEquipmentId(), res.getReservationDate(), res.getReturnDate(), res.getStatus() };
+            ReservationController reservationController = new ReservationController();
+            List<Reservation> reservations = reservationController.getAllReservations(adminId);
+            JPanel updatePanel = new JPanel(new BorderLayout());
+            String[] columnNames = {"Reservation ID", "User", "Equipment", "Reservation Date", "Return Date", "Status"};
+            DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+            for (Reservation reservation : reservations) {
+                Object[] row = { reservation.getReservationId(), reservation.getUserId(), reservation.getEquipmentId(), reservation.getReservationDate(), reservation.getReturnDate(), reservation.getStatus() };
                 model.addRow(row);
             }
-            JTable table = new JTable(model);
+            final JTable table = new JTable(model);
+            JScrollPane scrollPane = new JScrollPane(table);
+            updatePanel.add(scrollPane, BorderLayout.CENTER);
+            JButton updateRequestButton = new JButton("Update Selected Request");
+            updateRequestButton.setBackground(Color.LIGHT_GRAY);
+            updateRequestButton.setForeground(Color.DARK_GRAY);
+            updateRequestButton.setPreferredSize(new Dimension(30, 30));
+            updateRequestButton.setMaximumSize(new Dimension(30, 30));
+            updatePanel.add(updateRequestButton, BorderLayout.SOUTH);
+            updateRequestButton.addActionListener(e -> {
+                int selectedRow = table.getSelectedRow();
+                if(selectedRow < 0){
+                    JOptionPane.showMessageDialog(this, "Please select request to update.");
+                    return;
+                }
+                int reservationId = (int) model.getValueAt(selectedRow, 0);
+                Reservation selectedReservation = reservations.stream().filter(reservation -> reservation.getReservationId() == reservationId).findFirst().orElse(null);
+                if(selectedReservation == null){
+                    JOptionPane.showMessageDialog(this, "Reservation not found.");
+                    return;
+                }
+                JPanel editPanel = new JPanel(new GridBagLayout());
+                GridBagConstraints gridBagConstraints = new GridBagConstraints();
+                gridBagConstraints.insets = new Insets(5, 5, 5, 5);
+                gridBagConstraints.fill = GridBagConstraints.HORIZONTAL;
+
+                JLabel labelReservationId = new JLabel("Reservation ID:");
+                JTextField textFieldReservationId = new JTextField(String.valueOf(selectedReservation.getReservationId()));
+                textFieldReservationId.setEditable(false);
+                JLabel labelUserName = new JLabel("Requesting Users Name:");
+                JTextField textFieldUserName = new JTextField(selectedReservation.getUserId());
+                textFieldUserName.setEditable(false);
+                JLabel labelEquipmentName = new JLabel("Equipment Name:");
+                JTextField textFieldEquipmentName = new JTextField(selectedReservation.getEquipmentId());
+                textFieldEquipmentName.setEditable(false);
+                JLabel labelReservationDate = new JLabel("Reservation Date:");
+                Date reservationDate = selectedReservation.getReservationDate();
+                SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yyyy");
+                String reservationDateString = formatter.format(reservationDate);
+                JTextField textFieldReservationDate = new JTextField(reservationDateString);
+                textFieldReservationDate.setEditable(false);
+                JLabel labelReturnDate = new JLabel("Return Date:");
+                Date reservationReturnDate = selectedReservation.getReturnDate();
+                String reservationReturnDateString;
+                if (reservationReturnDate != null) {
+                    reservationReturnDateString = formatter.format(reservationReturnDate);
+                }
+                else {
+                    reservationReturnDateString = ""; // Or use an empty string ""
+                }
+                JTextField textFieldReturnDate = new JTextField(reservationReturnDateString);
+                textFieldReturnDate.setEditable(false);
+                JLabel labelStatus = new JLabel("Status:");
+                String[] status = {"Approved", "Rejected"};
+                JComboBox<String> comboBoxStatus = new JComboBox(status);
+                comboBoxStatus.setSelectedItem(selectedReservation.getStatus());
+
+                JButton updateRequestSubmitButton = new JButton("Update Request");
+                updateRequestSubmitButton.setBackground(Color.LIGHT_GRAY);
+                updateRequestSubmitButton.setForeground(Color.DARK_GRAY);
+                updateRequestSubmitButton.setPreferredSize(new Dimension(30, 30));
+                updateRequestSubmitButton.setMaximumSize(new Dimension(30, 30));
+                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 0;
+                editPanel.add(labelReservationId, gridBagConstraints);
+                gridBagConstraints.gridx = 1;
+                editPanel.add(textFieldReservationId, gridBagConstraints);
+                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 1;
+                editPanel.add(labelUserName, gridBagConstraints);
+                gridBagConstraints.gridx = 1;
+                editPanel.add(textFieldUserName, gridBagConstraints);
+                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 2;
+                editPanel.add(labelEquipmentName, gridBagConstraints);
+                gridBagConstraints.gridx = 1;
+                editPanel.add(textFieldEquipmentName, gridBagConstraints);
+                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 3;
+                editPanel.add(labelReservationDate, gridBagConstraints);
+                gridBagConstraints.gridx = 1;
+                editPanel.add(textFieldReservationDate, gridBagConstraints);
+                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 4;
+                editPanel.add(labelReturnDate, gridBagConstraints);
+                gridBagConstraints.gridx = 1;
+                editPanel.add(textFieldReturnDate, gridBagConstraints);
+                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 5;
+                editPanel.add(labelStatus, gridBagConstraints);
+                gridBagConstraints.gridx = 1;
+                editPanel.add(comboBoxStatus, gridBagConstraints);
+                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 6; gridBagConstraints.gridwidth = 2;
+                editPanel.add(updateRequestSubmitButton, gridBagConstraints);
+
+                updateRequestSubmitButton.addActionListener(ev ->{
+                    selectedReservation.setReservationId(Integer.parseInt(textFieldReservationId.getText()));
+                    selectedReservation.setStatus((String)comboBoxStatus.getSelectedItem());
+
+                    int reservationID = Integer.parseInt(textFieldReservationId.getText());
+                    String reservationStatus = (String)comboBoxStatus.getSelectedItem();
+                    String adminID = loggedInUser.getUserId();
+                    boolean success = reservationController.updateReservationStatus(reservationID,reservationStatus,adminID);
+                    if(success)
+                        JOptionPane.showMessageDialog(this, "Successfully updated the reservation.");
+                    else
+                        JOptionPane.showMessageDialog(this, "Failed to update the reservation.");
+                });
+                contentPanel.removeAll();
+                contentPanel.add(editPanel, BorderLayout.CENTER);
+                contentPanel.revalidate();
+                contentPanel.repaint();
+            });
             contentPanel.removeAll();
-            contentPanel.add(new JScrollPane(table), BorderLayout.CENTER);
+            contentPanel.add(updatePanel, BorderLayout.CENTER);
             contentPanel.revalidate();
             contentPanel.repaint();
         }
 
         private void loadCheckOut() {
-            String resIdStr = JOptionPane.showInputDialog(this, "Enter Reservation ID for check-out:");
-            String staffId = JOptionPane.showInputDialog(this, "Enter Staff ID:");
-            if(resIdStr == null || staffId == null) return;
-            try {
-                int resId = Integer.parseInt(resIdStr);
-                CheckoutController cc = new CheckoutController();
-                boolean success = cc.checkOutEquipment(resId, staffId);
-                if(success)
-                    JOptionPane.showMessageDialog(this, "Equipment checked out successfully.");
-                else
-                    JOptionPane.showMessageDialog(this, "Failed to check out equipment.");
-            } catch(Exception ex) {
-                JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
+            // Retrieve pending checkouts from the back end.
+            CheckoutController checkoutController = new CheckoutController();
+            List<String> pendingCheckouts = checkoutController.getPendingCheckouts();
+            if (pendingCheckouts.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "No equipment is pending check-out.");
+                return;
             }
+
+            // Create a panel with a table to display pending checkouts.
+            JPanel panel = new JPanel(new BorderLayout());
+            // Define columns corresponding to the expected string format.
+            String[] columnNames = {"Reservation ID", "Requester's Name", "Requested Equipment", "Reservation Date"};
+            DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+
+            // Split each string by " | " and add as a row.
+            for (String detail : pendingCheckouts) {
+                String[] parts = detail.split(" \\| ");
+                if (parts.length == 4) {
+                    model.addRow(parts);
+                } else {
+                    // Fallback if the format is unexpected.
+                    model.addRow(new Object[]{detail, "", "", ""});
+                }
+            }
+
+            JTable table = new JTable(model);
+            JScrollPane scrollPane = new JScrollPane(table);
+            panel.add(scrollPane, BorderLayout.CENTER);
+
+            // Create a Check Out button.
+            JButton checkOutButton = new JButton("Check Out Selected");
+            checkOutButton.setBackground(Color.LIGHT_GRAY);
+            checkOutButton.setForeground(Color.DARK_GRAY);
+            checkOutButton.setPreferredSize(new Dimension(100, 30));
+            panel.add(checkOutButton, BorderLayout.SOUTH);
+
+            // When the button is clicked, process the selected row.
+            checkOutButton.addActionListener(e -> {
+                int selectedRow = table.getSelectedRow();
+                if (selectedRow < 0) {
+                    JOptionPane.showMessageDialog(this, "Please select a pending checkout.");
+                    return;
+                }
+                try {
+                    // Extract reservation ID from the first column.
+                    String resIdStr = (String) model.getValueAt(selectedRow, 0);
+                    int resId = Integer.parseInt(resIdStr.trim());
+                    String staffId = loggedInUser.getUserId();
+                    if (staffId == null || staffId.trim().isEmpty()) {
+                        JOptionPane.showMessageDialog(this, "Error: Invalid staff ID.");
+                        return;
+                    }
+                    boolean success = checkoutController.checkOutEquipment(resId, staffId);
+                    if (success)
+                        JOptionPane.showMessageDialog(this, "Equipment checked out successfully.");
+                    else
+                        JOptionPane.showMessageDialog(this, "Failed to check out equipment.");
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Error parsing reservation ID: " + ex.getMessage());
+                }
+            });
+
+            contentPanel.removeAll();
+            contentPanel.add(panel, BorderLayout.CENTER);
+            contentPanel.revalidate();
+            contentPanel.repaint();
         }
 
+
+
         private void loadCheckIn() {
-            String resIdStr = JOptionPane.showInputDialog(this, "Enter Reservation ID for check-in:");
-            String staffId = JOptionPane.showInputDialog(this, "Enter Staff ID:");
-            String equipmentState = JOptionPane.showInputDialog(this, "Enter Equipment State (Good, Fair, Poor):");
-            if(resIdStr == null || staffId == null || equipmentState == null) return;
-            try {
-                int resId = Integer.parseInt(resIdStr);
-                CheckoutController cc = new CheckoutController();
-                boolean success = cc.checkInEquipment(resId, staffId, equipmentState);
-                if(success)
-                    JOptionPane.showMessageDialog(this, "Equipment checked in successfully.");
-                else
-                    JOptionPane.showMessageDialog(this, "Failed to check in equipment.");
-            } catch(Exception ex) {
-                JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
+            // Retrieve checked-out equipment from the back end.
+            CheckoutController checkoutController = new CheckoutController();
+            List<String> checkedOutList = checkoutController.getCheckedOutEquipment();
+            if (checkedOutList.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "No equipment is currently checked out.");
+                return;
             }
+
+            // Create a panel with a table to display checked-out equipment.
+            JPanel panel = new JPanel(new BorderLayout());
+            String[] columnNames = {"Reservation ID", "Requester's Name", "Requested Equipment", "Checked Out Date"};
+            DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+
+            for (String detail : checkedOutList) {
+                String[] parts = detail.split(" \\| ");
+                if (parts.length == 4) {
+                    model.addRow(parts);
+                } else {
+                    model.addRow(new Object[]{detail, "", "", ""});
+                }
+            }
+
+            JTable table = new JTable(model);
+            JScrollPane scrollPane = new JScrollPane(table);
+            panel.add(scrollPane, BorderLayout.CENTER);
+
+            // Create a Check In button.
+            JButton checkInButton = new JButton("Check In Selected");
+            checkInButton.setBackground(Color.LIGHT_GRAY);
+            checkInButton.setForeground(Color.DARK_GRAY);
+            checkInButton.setPreferredSize(new Dimension(100, 30));
+            panel.add(checkInButton, BorderLayout.SOUTH);
+
+            // When the button is clicked, process the selected row.
+            checkInButton.addActionListener(e -> {
+                int selectedRow = table.getSelectedRow();
+                if (selectedRow < 0) {
+                    JOptionPane.showMessageDialog(this, "Please select equipment to check in.");
+                    return;
+                }
+                try {
+                    // Extract reservation ID from the first column.
+                    String resIdStr = (String) model.getValueAt(selectedRow, 0);
+                    int resId = Integer.parseInt(resIdStr.trim());
+                    String staffId = loggedInUser.getUserId();
+                    if (staffId == null || staffId.trim().isEmpty()) {
+                        JOptionPane.showMessageDialog(this, "Error: Invalid staff ID.");
+                        return;
+                    }
+                    // Prompt for the equipment state.
+                    String equipmentState = JOptionPane.showInputDialog(this, "Enter Equipment State (Good, Fair, Poor):");
+                    if (equipmentState == null || equipmentState.trim().isEmpty()) {
+                        JOptionPane.showMessageDialog(this, "Equipment state is required.");
+                        return;
+                    }
+                    boolean success = checkoutController.checkInEquipment(resId, staffId, equipmentState);
+                    if (success)
+                        JOptionPane.showMessageDialog(this, "Equipment checked in successfully.");
+                    else
+                        JOptionPane.showMessageDialog(this, "Failed to check in equipment.");
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Error parsing reservation ID: " + ex.getMessage());
+                }
+            });
+
+            contentPanel.removeAll();
+            contentPanel.add(panel, BorderLayout.CENTER);
+            contentPanel.revalidate();
+            contentPanel.repaint();
         }
+
+
     }
 }

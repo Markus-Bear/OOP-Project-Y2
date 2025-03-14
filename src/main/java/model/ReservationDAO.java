@@ -1,11 +1,8 @@
 package model;
 
 import exception.DatabaseOperationException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Date;
+
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -92,20 +89,23 @@ public class ReservationDAO {
             throw new IllegalArgumentException("Reservation date cannot be null.");
         }
 
-        String query = "INSERT INTO reservations (user_id, equipment_id, reservation_date, status) VALUES (?, ?, ?, 'Pending')";
-
+        // Call the stored procedure ReserveEquipment
+        String call = "{CALL ReserveEquipment(?, ?, ?)}";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
+             CallableStatement stmt = conn.prepareCall(call)) {
 
             stmt.setString(1, userId);
             stmt.setString(2, equipmentId);
             stmt.setDate(3, reservationDate);
 
-            return stmt.executeUpdate() > 0;
+            // Execute the stored procedure.
+            stmt.execute();
+            return true;
         } catch (SQLException e) {
             throw new DatabaseOperationException("Error creating reservation for user ID: " + userId, e);
         }
     }
+
 
     /**
      * Approves or rejects a reservation. (Admin only)
@@ -128,17 +128,17 @@ public class ReservationDAO {
             throw new IllegalArgumentException("Status cannot be null or empty.");
         }
 
-        String query = "UPDATE reservations SET status = ? WHERE reservation_id = ?";
-
+        String call = "{CALL ApproveReservation(?, ?, ?)}";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
-
-            stmt.setString(1, status);
-            stmt.setInt(2, reservationId);
-
-            return stmt.executeUpdate() > 0;
+             CallableStatement stmt = conn.prepareCall(call)) {
+            stmt.setInt(1, reservationId);
+            stmt.setString(2, adminId);
+            stmt.setString(3, status);
+            stmt.execute();
+            return true;
         } catch (SQLException e) {
-            throw new DatabaseOperationException("Error updating reservation status for reservation ID: " + reservationId, e);
+            throw new DatabaseOperationException("Error approving reservation for reservation ID: " + reservationId, e);
         }
     }
+
 }

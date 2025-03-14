@@ -1,10 +1,8 @@
 package model;
 
 import exception.DatabaseOperationException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -199,7 +197,7 @@ public class EquipmentDAO {
         String sql = "{CALL AddEquipment(?, ?, ?, ?, ?)}";
 
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+             CallableStatement stmt = conn.prepareCall(sql)) {
 
             stmt.setString(1, equipment.getName());
             stmt.setString(2, equipment.getType());
@@ -265,7 +263,7 @@ public class EquipmentDAO {
         String sql = "{CALL UpdateEquipment(?, ?, ?, ?, ?, ?, ?)}";
 
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+             CallableStatement stmt = conn.prepareCall(sql)) {
 
             stmt.setString(1, equipment.getEquipmentId());
             stmt.setString(2, equipment.getName());
@@ -318,7 +316,7 @@ public class EquipmentDAO {
         String sql = "{CALL DeleteEquipment(?, ?)}";
 
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+             CallableStatement stmt = conn.prepareCall(sql)) {
 
             stmt.setString(1, equipmentId);
             stmt.setString(2, userId);
