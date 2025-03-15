@@ -1,5 +1,10 @@
-package view;
+/**
+ * This class defines the main GUI for Media Staff users.
+ * It contains multiple tabs (Home, View Profile, User Management, Equipment Management,
+ * and Reservations Management) and provides functionality such as logging out.
+ */
 
+package view;
 
 import controller.*;
 import model.User;
@@ -25,10 +30,11 @@ import javax.swing.JComboBox;
 import javax.swing.JOptionPane;
 import javax.swing.JSplitPane;
 import javax.swing.JPasswordField;
-import javax.swing.DefaultComboBoxModel;
 import javax.swing.SwingConstants;
 import javax.swing.Timer;
 import javax.swing.BorderFactory;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.plaf.basic.BasicButtonUI;
@@ -43,8 +49,6 @@ import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.FocusAdapter;
-import java.awt.event.FocusEvent;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -52,13 +56,18 @@ import org.jfree.data.category.DefaultCategoryDataset;
 import org.jfree.data.general.DefaultPieDataset;
 
 
+/**
+ * The MediaStaffFrame class provides the main GUI for Media Staff users.
+ * It organizes the interface using a JTabbedPane with different functional tabs
+ * and a log-out button.
+ */
 public class MediaStaffFrame extends JFrame {
     private User loggedInUser;
     private JTabbedPane tabbedPane;
 
     public MediaStaffFrame(User user) {
         this.loggedInUser = user;
-        setTitle("Media Equipment Rental System - Admin Menu - " + user.getName());
+        setTitle("Media Equipment Rental System - Staff Menu - " + user.getName());
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(900, 600);
         setLocationRelativeTo(null);
@@ -69,9 +78,24 @@ public class MediaStaffFrame extends JFrame {
         // Create tabs (Home tab added first)
         tabbedPane.addTab("Home", new HomePanel(loggedInUser));
         tabbedPane.addTab("View Profile", new ViewProfilePanel(loggedInUser));
-        tabbedPane.addTab("User Management", new UserManagementPanel(loggedInUser.getUserId()));
+        tabbedPane.addTab("User Management", new UserManagementPanel());
         tabbedPane.addTab("Equipment Management", new EquipmentManagementPanel(loggedInUser.getUserId()));
         tabbedPane.addTab("Reservations Management", new ReservationsManagementPanel(loggedInUser.getUserId()));
+
+        // A change listener to refresh tabs that implement Refreshable
+        tabbedPane.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                Component selected = tabbedPane.getSelectedComponent();
+                if (selected instanceof Refreshable) {
+                    try {
+                        ((Refreshable) selected).refresh();
+                    } catch (DatabaseOperationException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            }
+        });
 
         mainPanel.add(tabbedPane, BorderLayout.CENTER);
 
@@ -93,16 +117,24 @@ public class MediaStaffFrame extends JFrame {
         add(mainPanel);
     }
 
-    // --------------------------
-    // Home Panel (new)
-    // --------------------------
-    // Inside your AdminFrame class:
-    // Inside your AdminFrame class:
+    /**
+     * The HomePanel class displays various charts (equipment states, checked out equipment,
+     * reservations status, and user reservations) in a grid layout. It periodically refreshes
+     * the charts using a Timer.
+     */
     class HomePanel extends JPanel {
+        private ChartPanel equipmentStateChartPanel;
+        private ChartPanel checkedOutChartPanel;
         private ChartPanel reservationsStatusChartPanel;
+        private ChartPanel userReservationsChartPanel;
         private Timer timer;
-        private User loggedInUser; // access to the logged in user
+        private User loggedInUser; // access to the logged-in user
 
+        /**
+         * Constructs a HomePanel for the given user and initializes all chart panels.
+         *
+         * @param user the currently logged-in user.
+         */
         public HomePanel(User user) {
             this.loggedInUser = user;
             // Use a GridLayout (2 rows x 2 columns) for four charts.
@@ -110,42 +142,52 @@ public class MediaStaffFrame extends JFrame {
 
             int chartSize = 300; // width and height (adjust as needed)
 
+            // Initialize and add each chart panel
             // Equipment States Chart (Bar Chart)
-            JFreeChart equipmentStateChart = createEquipmentStateChart();
-            ChartPanel cp1 = new ChartPanel(equipmentStateChart);
-            cp1.setPreferredSize(new Dimension(chartSize, chartSize));
-            add(cp1);
+            equipmentStateChartPanel = new ChartPanel(createEquipmentStateChart());
+            equipmentStateChartPanel.setPreferredSize(new Dimension(chartSize, chartSize));
+            add(equipmentStateChartPanel);
 
             // Checked Out Equipment Chart (Pie Chart)
-            JFreeChart checkedOutChart = createCheckedOutChart();
-            ChartPanel cp2 = new ChartPanel(checkedOutChart);
-            cp2.setPreferredSize(new Dimension(chartSize, chartSize));
-            add(cp2);
+            checkedOutChartPanel = new ChartPanel(createCheckedOutChart());
+            checkedOutChartPanel.setPreferredSize(new Dimension(chartSize, chartSize));
+            add(checkedOutChartPanel);
 
             // Reservations Status Chart (Bar Chart: Pending vs Approved)
-            JFreeChart reservationsStatusChart = createReservationsStatusChart();
-            reservationsStatusChartPanel = new ChartPanel(reservationsStatusChart);
+            reservationsStatusChartPanel = new ChartPanel(createReservationsStatusChart());
             reservationsStatusChartPanel.setPreferredSize(new Dimension(chartSize, chartSize));
             add(reservationsStatusChartPanel);
 
             // User Reservations Chart (Bar Chart)
-            JFreeChart userReservationsChart = createUserReservationsOverTimeChart();
-            ChartPanel cp4 = new ChartPanel(userReservationsChart);
-            cp4.setPreferredSize(new Dimension(chartSize, chartSize));
-            add(cp4);
+            userReservationsChartPanel = new ChartPanel(createUserReservationsOverTimeChart());
+            userReservationsChartPanel.setPreferredSize(new Dimension(chartSize, chartSize));
+            add(userReservationsChartPanel);
 
-            // Set up a Timer to update the Reservations Status Chart every 5 seconds.
-            timer = new Timer(5000, e -> updateReservationsStatusChart());
+            // Timer to update all Charts every 3 seconds.
+            timer = new Timer(3000, e -> updateAllCharts());
             timer.start();
         }
 
-        // This method updates the Reservations Status Chart dynamically.
-        private void updateReservationsStatusChart() {
-            JFreeChart updatedChart = createReservationsStatusChart();
-            reservationsStatusChartPanel.setChart(updatedChart);
+        /**
+         * Updates all chart panels by creating new charts and repainting the panels.
+         */
+        private void updateAllCharts() {
+            equipmentStateChartPanel.setChart(createEquipmentStateChart());
+            checkedOutChartPanel.setChart(createCheckedOutChart());
+            reservationsStatusChartPanel.setChart(createReservationsStatusChart());
+            userReservationsChartPanel.setChart(createUserReservationsOverTimeChart());
+            // Optionally, force a repaint:
+            equipmentStateChartPanel.repaint();
+            checkedOutChartPanel.repaint();
+            reservationsStatusChartPanel.repaint();
+            userReservationsChartPanel.repaint();
         }
 
-        // Creates a bar chart for Equipment States.
+        /**
+         * Creates a bar chart displaying the counts of equipment in different states.
+         *
+         * @return a JFreeChart object representing the equipment states.
+         */
         private JFreeChart createEquipmentStateChart() {
             EquipmentController ec = new EquipmentController();
             // Use the current user's role for filtering. (Assuming getAllEquipment() accepts a role.)
@@ -168,7 +210,11 @@ public class MediaStaffFrame extends JFrame {
             return chart;
         }
 
-        // Creates a pie chart for Checked Out Equipment.
+        /**
+         * Creates a pie chart comparing the count of checked-out equipment against available equipment.
+         *
+         * @return a JFreeChart object representing checked-out equipment.
+         */
         private JFreeChart createCheckedOutChart() {
             CheckoutController cc = new CheckoutController();
             List<String> checkedOut = cc.getCheckedOutEquipment();
@@ -185,7 +231,11 @@ public class MediaStaffFrame extends JFrame {
             return chart;
         }
 
-        // Creates a bar chart comparing pending and approved reservations.
+        /**
+         * Creates a bar chart comparing pending and approved reservations.
+         *
+         * @return a JFreeChart object representing reservation statuses.
+         */
         private JFreeChart createReservationsStatusChart() {
             ReservationController rc = new ReservationController();
             // Use the current user's ID to filter reservations.
@@ -211,7 +261,11 @@ public class MediaStaffFrame extends JFrame {
             return chart;
         }
 
-        // Creates a bar chart for User Reservations.
+        /**
+         * Creates a bar chart showing the number of reservations per user.
+         *
+         * @return a JFreeChart object representing user reservations.
+         */
         private JFreeChart createUserReservationsOverTimeChart() {
             ReservationController rc = new ReservationController();
             List<Reservation> reservations = rc.getAllReservations(loggedInUser.getUserId());
@@ -233,11 +287,15 @@ public class MediaStaffFrame extends JFrame {
         }
     }
 
-
-    // --------------------------
-    // View Profile Panel
-    // --------------------------
+    /**
+     * ViewProfilePanel displays the logged-in user's profile information.
+     */
     class ViewProfilePanel extends JPanel {
+        /**
+         * Constructs a ViewProfilePanel for the specified user.
+         *
+         * @param user the logged-in User.
+         */
         public ViewProfilePanel(User user) {
             setLayout(new GridBagLayout());
             GridBagConstraints gridBagConstraints = new GridBagConstraints();
@@ -260,26 +318,35 @@ public class MediaStaffFrame extends JFrame {
             JTextField textFieldRole = new JTextField(user.getRole(), 20);
             textFieldRole.setEditable(false);
 
-            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 0;
+            gridBagConstraints.gridx = 0;
+            gridBagConstraints.gridy = 0;
             add(labelUserId, gridBagConstraints);
             gridBagConstraints.gridx = 1;
             add(textFieldUserId, gridBagConstraints);
-            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 1;
+            gridBagConstraints.gridx = 0;
+            gridBagConstraints.gridy = 1;
             add(labelName, gridBagConstraints);
             gridBagConstraints.gridx = 1;
             add(textFieldName, gridBagConstraints);
-            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 2;
+            gridBagConstraints.gridx = 0;
+            gridBagConstraints.gridy = 2;
             add(labelEmail, gridBagConstraints);
             gridBagConstraints.gridx = 1;
             add(textFieldEmail, gridBagConstraints);
-            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 3;
+            gridBagConstraints.gridx = 0;
+            gridBagConstraints.gridy = 3;
             add(labelRole, gridBagConstraints);
             gridBagConstraints.gridx = 1;
             add(textFieldRole, gridBagConstraints);
         }
     }
 
-
+    /**
+     * Creates a JButton styled as a menu item with rollover and pressed effects.
+     *
+     * @param text the button label.
+     * @return the styled JButton.
+     */
     private JButton createMenuItem(String text) {
         JButton button = new JButton(text);
         // Force a basic UI that respects our background color changes.
@@ -327,17 +394,16 @@ public class MediaStaffFrame extends JFrame {
         return button;
     }
 
-
-    // --------------------------
-    // User Management Panel
-    // --------------------------
+    /**
+     * UserManagementPanel provides an interface for managing users, including viewing,
+     * adding, updating, and deleting users.
+     */
     class UserManagementPanel extends JPanel {
-        private String adminId;
         private JPanel contentPanel;
-
-        public UserManagementPanel(String adminId) {
-            this.adminId = adminId;
-
+        /**
+         * Constructs a UserManagementPanel for the given media staff member.
+         */
+        public UserManagementPanel() {
 
             // Sidebar with MenuItems
             JPanel sidebar = new JPanel();
@@ -374,108 +440,149 @@ public class MediaStaffFrame extends JFrame {
             add(splitPane, BorderLayout.CENTER);
 
             // Action listeners
-            buttonViewAllUsers.addActionListener(e -> loadViewAllUsers());
-            buttonViewLecturers.addActionListener(e -> loadViewLecturers());
-            buttonViewStudents.addActionListener(e -> loadViewStudents());
+            buttonViewAllUsers.addActionListener(e -> {
+                try {
+                    loadViewAllUsers();
+                } catch (DatabaseOperationException ex) {
+                    throw new RuntimeException(ex);
+                }
+            });
+            buttonViewLecturers.addActionListener(e -> {
+                try {
+                    loadViewLecturers();
+                } catch (DatabaseOperationException ex) {
+                    throw new RuntimeException(ex);
+                }
+            });
+            buttonViewStudents.addActionListener(e -> {
+                try {
+                    loadViewStudents();
+                } catch (DatabaseOperationException ex) {
+                    throw new RuntimeException(ex);
+                }
+            });
         }
 
-        private void loadViewAllUsers() {
-            final UserController uc = new UserController();
-            try {
-                final List<User> users = uc.getAllUsers("Admin");
-                String[] columnNames = {"User ID", "Email", "Name", "Role"};
-                DefaultTableModel model = new DefaultTableModel(columnNames, 0);
-                for (User user : users) {
-                    if(!user.getRole().equals("Admin")) {
-                        Object[] row = { user.getUserId(), user.getEmail(), user.getName(), user.getRole() };
-                        model.addRow(row);
-                    }
+        /**
+         * Loads all students and lecturers from the database and displays them in a table.
+         *
+         * @throws DatabaseOperationException if a database error occurs.
+         */
+        private void loadViewAllUsers() throws DatabaseOperationException {
+            final UserController userController = new UserController();
+            final List<User> users = userController.getLecturersAndStudents();
+            String[] columnNames = {"User ID", "Email", "Name", "Role"};
+            DefaultTableModel model = new DefaultTableModel(columnNames, 0){
+                @Override
+                public boolean isCellEditable(int row, int column){
+                    return false;
                 }
-                JTable table = new JTable(model);
-
-                // Center text in some columns
-                DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
-                centerRenderer.setHorizontalAlignment(JLabel.CENTER);
-                table.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
-
-                contentPanel.removeAll();
-                contentPanel.add(new JScrollPane(table), BorderLayout.CENTER);
-                contentPanel.revalidate();
-                contentPanel.repaint();
-            } catch (DatabaseOperationException ex) {
-                JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
+            };
+            for (User user : users) {
+                if(!user.getRole().equals("Admin") && !user.getRole().equals("MediaStaff")) {
+                    Object[] row = { user.getUserId(), user.getEmail(), user.getName(), user.getRole() };
+                    model.addRow(row);
+                }
             }
+            JTable table = new JTable(model);
+
+            // Center text in some columns
+            DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+            centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+            table.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
+
+            contentPanel.removeAll();
+            contentPanel.add(new JScrollPane(table), BorderLayout.CENTER);
+            contentPanel.revalidate();
+            contentPanel.repaint();
         }
 
-        private void loadViewLecturers() {
+        /**
+         * Loads only the lecturers from the database and displays them in a table.
+         *
+         * @throws DatabaseOperationException if a database error occurs.
+         */
+        private void loadViewLecturers() throws DatabaseOperationException {
             final UserController uc = new UserController();
-            try {
-                final List<User> users = uc.getAllUsers("Admin");
-                String[] columnNames = {"User ID", "Email", "Name", "Role", "Department"};
-                DefaultTableModel model = new DefaultTableModel(columnNames, 0);
-                for (User user : users) {
-                    if(user.getRole().equals("Lecturer")) {
-                        Object[] row = { user.getUserId(), user.getEmail(), user.getName(), user.getRole(), user.getDepartment() };
-                        model.addRow(row);
-                    }
-
+            final List<User> users = uc.getAllUsers("MediaStaff");
+            String[] columnNames = {"User ID", "Email", "Name", "Role", "Department"};
+            DefaultTableModel model = new DefaultTableModel(columnNames, 0){
+                @Override
+                public boolean isCellEditable(int row, int column){
+                    return false;
                 }
-                JTable table = new JTable(model);
+            };
+            for (User user : users) {
+                if(user.getRole().equals("Lecturer")) {
+                    Object[] row = { user.getUserId(), user.getEmail(), user.getName(), user.getRole(), user.getDepartment() };
+                    model.addRow(row);
+                }
 
-                // Center text in some columns
-                DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
-                centerRenderer.setHorizontalAlignment(JLabel.CENTER);
-                table.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
-
-                contentPanel.removeAll();
-                contentPanel.add(new JScrollPane(table), BorderLayout.CENTER);
-                contentPanel.revalidate();
-                contentPanel.repaint();
-            } catch (DatabaseOperationException ex) {
-                JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
             }
+            JTable table = new JTable(model);
+
+            // Center text in some columns
+            DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+            centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+
+            contentPanel.removeAll();
+            contentPanel.add(new JScrollPane(table), BorderLayout.CENTER);
+            contentPanel.revalidate();
+            contentPanel.repaint();
         }
 
-        private void loadViewStudents() {
+        /**
+         * Loads only the students from the database and displays them in a table.
+         *
+         * @throws DatabaseOperationException if a database error occurs.
+         */
+        private void loadViewStudents() throws DatabaseOperationException {
             final UserController uc = new UserController();
-            try {
-                final List<User> users = uc.getAllUsers("Admin");
-                String[] columnNames = {"Student ID", "Email", "Name", "Role", "Department", "Course", "Year"};
-                DefaultTableModel model = new DefaultTableModel(columnNames, 0);
-                for (User user : users) {
-                    if(user.getRole().equals("Student")) {
-                        Object[] row = { user.getUserId(), user.getEmail(), user.getName(), user.getRole(), user.getDepartment(), user.getCourse(), user.getYear() };
-                        model.addRow(row);
-                    }
-
+            final List<User> users = uc.getAllUsers("MediaStaff");
+            String[] columnNames = {"Student ID", "Email", "Name", "Role", "Department", "Course", "Year"};
+            DefaultTableModel model = new DefaultTableModel(columnNames, 0){
+                @Override
+                public boolean isCellEditable(int row, int column){
+                    return false;
                 }
-                JTable table = new JTable(model);
+            };
+            for (User user : users) {
+                if(user.getRole().equals("Student")) {
+                    Object[] row = { user.getUserId(), user.getEmail(), user.getName(), user.getRole(), user.getDepartment(), user.getCourse(), user.getYear() };
+                    model.addRow(row);
+                }
 
-                // Center text in some columns
-                DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
-                centerRenderer.setHorizontalAlignment(JLabel.CENTER);
-                table.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
-
-                contentPanel.removeAll();
-                contentPanel.add(new JScrollPane(table), BorderLayout.CENTER);
-                contentPanel.revalidate();
-                contentPanel.repaint();
-            } catch (DatabaseOperationException ex) {
-                JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
             }
+            JTable table = new JTable(model);
+
+            // Center text in some columns
+            DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+            centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+            table.getColumnModel().getColumn(6).setCellRenderer(centerRenderer);
+
+            contentPanel.removeAll();
+            contentPanel.add(new JScrollPane(table), BorderLayout.CENTER);
+            contentPanel.revalidate();
+            contentPanel.repaint();
         }
 
     }
 
-    // --------------------------
-    // Equipment Management Panel
-    // --------------------------
+    /**
+     * EquipmentManagementPanel provides an interface for managing equipment records,
+     * including viewing, adding, updating, and deleting equipment.
+     */
     class EquipmentManagementPanel extends JPanel {
-        private String adminId;
+        private String staffId;
         private JPanel contentPanel;
 
-        public EquipmentManagementPanel(String adminId) {
-            this.adminId = adminId;
+        /**
+         * Constructs an EquipmentManagementPanel for the given media staff member.
+         *
+         * @param staffId the ID of the media staff member.
+         */
+        public EquipmentManagementPanel(String staffId) {
+            this.staffId = staffId;
 
             JPanel sidebar = new JPanel();
             sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
@@ -529,9 +636,14 @@ public class MediaStaffFrame extends JFrame {
             });
         }
 
+        /**
+         * Loads all equipment records into a table view.
+         *
+         * @throws DatabaseOperationException if a database error occurs.
+         */
         private void loadViewAllEquipment() throws DatabaseOperationException {
             EquipmentController equipmentController = new EquipmentController();
-            List<Equipment> equipments = equipmentController.getAllEquipment("Admin");
+            List<Equipment> equipments = equipmentController.getAllEquipment("MediaStaff");
             String[] colNames = {"Equipment ID", "Name", "Type", "Description", "Status", "State"};
             DefaultTableModel model = new DefaultTableModel(colNames, 0);
             for (Equipment equipment : equipments) {
@@ -552,6 +664,11 @@ public class MediaStaffFrame extends JFrame {
             contentPanel.repaint();
         }
 
+        /**
+         * Loads equipment records filtered by type.
+         *
+         * @throws DatabaseOperationException if a database error occurs.
+         */
         private void loadViewEquipmentByType() throws DatabaseOperationException {
             String[] types = {"Audio Recorder", "Camera", "Drone", "Laptop", "Lighting", "Projector", "VR Headset", "Other"};
             String type = (String) JOptionPane.showInputDialog(this, "Select Equipment Type:", "Equipment Type", JOptionPane.QUESTION_MESSAGE, null, types, types[0]);
@@ -578,9 +695,14 @@ public class MediaStaffFrame extends JFrame {
             contentPanel.repaint();
         }
 
+        /**
+         * Loads the "Update Equipment State" form panel.
+         *
+         * @throws DatabaseOperationException if a database error occurs.
+         */
         private void loadUpdateEquipmentState() throws DatabaseOperationException {
             EquipmentController equipmentController = new EquipmentController();
-            List<Equipment> equipments = equipmentController.getAllEquipment("Admin");
+            List<Equipment> equipments = equipmentController.getAllEquipment("MediaStaff");
             JPanel updatePanel = new JPanel(new BorderLayout());
             String[] columnNames = {"Equipment ID", "Name", "Type", "Description", "Status", "State"};
             final DefaultTableModel model = new DefaultTableModel(columnNames, 0);
@@ -631,7 +753,7 @@ public class MediaStaffFrame extends JFrame {
                 String[] types = {"Audio Recorder", "Camera", "Drone", "Laptop", "Lighting", "Projector", "VR Headset", "Other"};
                 JComboBox<String> comboBoxType = new JComboBox<>(types);
                 comboBoxType.setSelectedItem(selectedEquipment.getType());
-                comboBoxType.setEditable(false);
+                comboBoxType.setEnabled(false);
                 JLabel labelDescription = new JLabel("Description:");
                 JTextField textFieldDescription = new JTextField(selectedEquipment.getDescription(), 20);
                 textFieldDescription.setEditable(false);
@@ -645,23 +767,29 @@ public class MediaStaffFrame extends JFrame {
                 updateEquipmentSubmitButton.setForeground(Color.DARK_GRAY);
                 updateEquipmentSubmitButton.setPreferredSize(new Dimension(30, 30));
                 updateEquipmentSubmitButton.setMaximumSize(new Dimension(30, 30));
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 0;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 0;
                 editPanel.add(labelName, gridBagConstraints);
                 gridBagConstraints.gridx = 1;
                 editPanel.add(textFieldName, gridBagConstraints);
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 1;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 1;
                 editPanel.add(labelType, gridBagConstraints);
                 gridBagConstraints.gridx = 1;
                 editPanel.add(comboBoxType, gridBagConstraints);
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 2;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 2;
                 editPanel.add(labelDescription, gridBagConstraints);
                 gridBagConstraints.gridx = 1;
                 editPanel.add(textFieldDescription, gridBagConstraints);
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 3;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 3;
                 editPanel.add(labelState, gridBagConstraints);
                 gridBagConstraints.gridx = 1;
                 editPanel.add(comboBoxState, gridBagConstraints);
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 4; gridBagConstraints.gridwidth = 2;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 4;
+                gridBagConstraints.gridwidth = 2;
                 editPanel.add(updateEquipmentSubmitButton, gridBagConstraints);
 
                 updateEquipmentSubmitButton.addActionListener(ev -> {
@@ -674,7 +802,7 @@ public class MediaStaffFrame extends JFrame {
                         selectedEquipment.setType(type);
                         selectedEquipment.setDescription(description);
                         selectedEquipment.setState(state);
-                        boolean success = equipmentController.updateEquipment(selectedEquipment, adminId);
+                        boolean success = equipmentController.updateEquipment(selectedEquipment, staffId);
                         if(success)
                             JOptionPane.showMessageDialog(this, "Equipment updated successfully.");
                         else
@@ -699,15 +827,21 @@ public class MediaStaffFrame extends JFrame {
         }
     }
 
-    // --------------------------
-    // Reservations Management Panel
-    // --------------------------
-    class ReservationsManagementPanel extends JPanel {
-        private String adminId;
+    /**
+     * ReservationsManagementPanel provides an interface for managing reservations.
+     * It allows the media staff member to approve or reject reservations as well as process equipment check-out and check-in.
+     */
+    class ReservationsManagementPanel extends JPanel implements Refreshable {
+        private String staffId;
         private JPanel contentPanel;
 
-        public ReservationsManagementPanel(String adminId) {
-            this.adminId = adminId;
+        /**
+         * Constructs a ReservationsManagementPanel for the given staff.
+         *
+         * @param staffId the ID of the media staff member.
+         */
+        public ReservationsManagementPanel(String staffId) {
+            this.staffId = staffId;
 
             JPanel sidebar = new JPanel();
             sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
@@ -751,12 +885,31 @@ public class MediaStaffFrame extends JFrame {
             buttonCheckIn.addActionListener(e -> loadCheckIn());
         }
 
+        /**
+         * Refreshes the reservations management panel by reloading the approval tab.
+         *
+         * @throws DatabaseOperationException if a database error occurs.
+         */
+        public void refresh() throws DatabaseOperationException {
+            loadApproval();
+        }
+
+        /**
+         * Loads the reservation approval panel where the staff member can update reservation statuses.
+         *
+         * @throws DatabaseOperationException if a database error occurs.
+         */
         private void loadApproval() throws DatabaseOperationException {
             ReservationController reservationController = new ReservationController();
-            List<Reservation> reservations = reservationController.getAllReservations(adminId);
+            List<Reservation> reservations = reservationController.getAllReservations(staffId);
             JPanel updatePanel = new JPanel(new BorderLayout());
             String[] columnNames = {"Reservation ID", "User", "Equipment", "Reservation Date", "Return Date", "Status"};
-            DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+            DefaultTableModel model = new DefaultTableModel(columnNames, 0){
+                @Override
+                public boolean isCellEditable(int row, int column){
+                    return false;
+                }
+            };
             for (Reservation reservation : reservations) {
                 Object[] row = { reservation.getReservationId(), reservation.getUserId(), reservation.getEquipmentId(), reservation.getReservationDate(), reservation.getReturnDate(), reservation.getStatus() };
                 model.addRow(row);
@@ -823,31 +976,39 @@ public class MediaStaffFrame extends JFrame {
                 updateRequestSubmitButton.setForeground(Color.DARK_GRAY);
                 updateRequestSubmitButton.setPreferredSize(new Dimension(30, 30));
                 updateRequestSubmitButton.setMaximumSize(new Dimension(30, 30));
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 0;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 0;
                 editPanel.add(labelReservationId, gridBagConstraints);
                 gridBagConstraints.gridx = 1;
                 editPanel.add(textFieldReservationId, gridBagConstraints);
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 1;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 1;
                 editPanel.add(labelUserName, gridBagConstraints);
                 gridBagConstraints.gridx = 1;
                 editPanel.add(textFieldUserName, gridBagConstraints);
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 2;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 2;
                 editPanel.add(labelEquipmentName, gridBagConstraints);
                 gridBagConstraints.gridx = 1;
                 editPanel.add(textFieldEquipmentName, gridBagConstraints);
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 3;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 3;
                 editPanel.add(labelReservationDate, gridBagConstraints);
                 gridBagConstraints.gridx = 1;
                 editPanel.add(textFieldReservationDate, gridBagConstraints);
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 4;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 4;
                 editPanel.add(labelReturnDate, gridBagConstraints);
                 gridBagConstraints.gridx = 1;
                 editPanel.add(textFieldReturnDate, gridBagConstraints);
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 5;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 5;
                 editPanel.add(labelStatus, gridBagConstraints);
                 gridBagConstraints.gridx = 1;
                 editPanel.add(comboBoxStatus, gridBagConstraints);
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 6; gridBagConstraints.gridwidth = 2;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 6;
+                gridBagConstraints.gridwidth = 2;
                 editPanel.add(updateRequestSubmitButton, gridBagConstraints);
 
                 updateRequestSubmitButton.addActionListener(ev ->{
@@ -856,8 +1017,8 @@ public class MediaStaffFrame extends JFrame {
 
                     int reservationID = Integer.parseInt(textFieldReservationId.getText());
                     String reservationStatus = (String)comboBoxStatus.getSelectedItem();
-                    String adminID = loggedInUser.getUserId();
-                    boolean success = reservationController.updateReservationStatus(reservationID,reservationStatus,adminID);
+                    String staffID = loggedInUser.getUserId();
+                    boolean success = reservationController.updateReservationStatus(reservationID,reservationStatus,staffID);
                     if(success)
                         JOptionPane.showMessageDialog(this, "Successfully updated the reservation.");
                     else
@@ -874,6 +1035,9 @@ public class MediaStaffFrame extends JFrame {
             contentPanel.repaint();
         }
 
+        /**
+         * Loads the check-out panel for processing equipment check-outs.
+         */
         private void loadCheckOut() {
             // Retrieve pending checkouts from the back end.
             CheckoutController checkoutController = new CheckoutController();
@@ -887,7 +1051,12 @@ public class MediaStaffFrame extends JFrame {
             JPanel panel = new JPanel(new BorderLayout());
             // Define columns corresponding to the expected string format.
             String[] columnNames = {"Reservation ID", "Requester's Name", "Requested Equipment", "Reservation Date"};
-            DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+            DefaultTableModel model = new DefaultTableModel(columnNames, 0){
+                @Override
+                public boolean isCellEditable(int row, int column){
+                    return false;
+                }
+            };
 
             // Split each string by " | " and add as a row.
             for (String detail : pendingCheckouts) {
@@ -904,7 +1073,7 @@ public class MediaStaffFrame extends JFrame {
             JScrollPane scrollPane = new JScrollPane(table);
             panel.add(scrollPane, BorderLayout.CENTER);
 
-            // Create a Check Out button.
+            // Create a Check-Out button.
             JButton checkOutButton = new JButton("Check Out Selected");
             checkOutButton.setBackground(Color.LIGHT_GRAY);
             checkOutButton.setForeground(Color.DARK_GRAY);
@@ -943,8 +1112,9 @@ public class MediaStaffFrame extends JFrame {
             contentPanel.repaint();
         }
 
-
-
+        /**
+         * Loads the check-in panel for processing equipment check-ins.
+         */
         private void loadCheckIn() {
             // Retrieve checked-out equipment from the back end.
             CheckoutController checkoutController = new CheckoutController();
@@ -957,7 +1127,12 @@ public class MediaStaffFrame extends JFrame {
             // Create a panel with a table to display checked-out equipment.
             JPanel panel = new JPanel(new BorderLayout());
             String[] columnNames = {"Reservation ID", "Requester's Name", "Requested Equipment", "Checked Out Date"};
-            DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+            DefaultTableModel model = new DefaultTableModel(columnNames, 0){
+                @Override
+                public boolean isCellEditable(int row, int column){
+                    return false;
+                }
+            };
 
             for (String detail : checkedOutList) {
                 String[] parts = detail.split(" \\| ");

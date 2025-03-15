@@ -2,8 +2,31 @@ package controller;
 
 import exception.InvalidInputException;
 
+/**
+ * Utility class for validating user input.
+ *
+ * This class provides methods to validate email addresses, names,
+ * equipment names, and equipment descriptions. If the input is invalid,
+ * the methods throw an {@link InvalidInputException} with a descriptive message.
+ * The class does not perform any logging or error handling beyond throwing the exceptions.
+ * It is the responsibility of the caller (e.g. a controller) to catch these exceptions,
+ * log the error details if necessary, and display a generic error message to the user.
+ */
 public class InputValidator {
 
+    /**
+     * Validates an email address based on the provided role.
+     *
+     * For a Student, the local part must match the pattern {@code ^C00\\d+$}.
+     * For non-students, the local part must match the pattern {@code ^[a-zA-Z]+\\.[a-zA-Z]+$}.
+     * In all cases, the email must end with {@code @setu.ie}.
+     *
+     *
+     * @param email the email address to validate.
+     * @param role  the role of the user (e.g., "Student", "Lecturer").
+     * @return the validated email address.
+     * @throws InvalidInputException if the email does not match the required format.
+     */
     public static String validateEmail(String email, String role) throws InvalidInputException {
         email = email.trim();
         if (!email.toLowerCase().endsWith("@setu.ie")) {
@@ -25,6 +48,13 @@ public class InputValidator {
         return email;
     }
 
+    /**
+     * Validates a name ensuring that it contains only letters and spaces.
+     *
+     * @param name the name to validate.
+     * @return the validated name.
+     * @throws InvalidInputException if the name contains invalid characters.
+     */
     public static String validateName(String name) throws InvalidInputException {
         name = name.trim();
         if (!name.matches("^[a-zA-Z\\s]+$")) {
@@ -33,6 +63,15 @@ public class InputValidator {
         return name;
     }
 
+    /**
+     * Validates an equipment name.
+     *
+     * The equipment name cannot be empty and can only contain letters, numbers, and spaces.
+     *
+     * @param equipmentName the equipment name to validate.
+     * @return the validated equipment name.
+     * @throws InvalidInputException if the equipment name is empty or contains invalid characters.
+     */
     public static String validateEquipmentName(String equipmentName) throws InvalidInputException {
         equipmentName = equipmentName.trim();
         if (equipmentName.isEmpty()) {
@@ -43,7 +82,15 @@ public class InputValidator {
         return equipmentName;
     }
 
-
+    /**
+     * Validates an equipment description.
+     *
+     * The equipment description cannot be empty and can only contain letters, numbers, and spaces.
+     *
+     * @param description the equipment description to validate.
+     * @return the validated equipment description.
+     * @throws InvalidInputException if the description is empty or contains invalid characters.
+     */
     public static String validateEquipmentDescription(String description) throws InvalidInputException {
         description = description.trim();
         if (description.isEmpty()) {

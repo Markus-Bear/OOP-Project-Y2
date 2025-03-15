@@ -7,14 +7,24 @@ import model.ReservationDAO;
 import model.UserDAO;
 import java.sql.Date;
 import java.util.List;
+import java.util.ArrayList;
+import java.io.FileWriter;
+import java.io.PrintWriter;
+import java.io.IOException;
 
 /**
  * Controller for handling reservation-related operations.
  * Provides methods for users to request reservations and for admins/media staff to view or update reservations.
+ * <p>
+ * This controller encapsulates error handling by catching exceptions, writing details to a log file,
+ * and returning generic responses (or empty lists) so that the GUI only needs to display a default message.
+ * </p>
  */
 public class ReservationController {
     private final ReservationDAO reservationDAO = new ReservationDAO();
     private final UserDAO userDAO = new UserDAO();
+    private static final String LOG_FILE = "error.log";
+
 
     /**
      * Allows a user to request a reservation for a piece of equipment.
@@ -41,14 +51,11 @@ public class ReservationController {
             RoleValidator.validateRole(role, "Student", "Lecturer");
 
             return reservationDAO.createReservation(userId, equipmentId, reservationDate);
-        } catch (IllegalArgumentException e) {
-            System.out.println("Invalid input: " + e.getMessage());
-        } catch (RoleAccessException e) {
-            System.err.println("Authorization error: " + e.getMessage());
-        } catch (DatabaseOperationException e) {
-            System.err.println("Database error: " + e.getMessage());
+        } catch (IllegalArgumentException | RoleAccessException | DatabaseOperationException ex) {
+            logError("Error in requestReservation", ex);
+            // Return false to indicate the reservation request failed.
+            return false;
         }
-        return false;
     }
 
     /**
@@ -57,31 +64,27 @@ public class ReservationController {
      * for regular users, only their own reservations are returned.
      *
      * @param userId the ID of the user making the request.
-     * @return a list of reservations.
+     * @return a list of reservations; returns an empty list if an error occurs.
      */
     public List<Reservation> getAllReservations(String userId) {
         try {
             if (userId == null || userId.trim().isEmpty()) {
                 throw new IllegalArgumentException("User ID cannot be null or empty.");
             }
-
             String role = userDAO.getUserRole(userId);
             boolean isAdminOrMediaStaff = role.equalsIgnoreCase("Admin") || role.equalsIgnoreCase("MediaStaff");
-
             return reservationDAO.getAllReservations(userId, isAdminOrMediaStaff);
-        } catch (IllegalArgumentException e) {
-            System.out.println("Invalid input: " + e.getMessage());
-        } catch (DatabaseOperationException e) {
-            System.err.println("Database error: " + e.getMessage());
+        } catch (IllegalArgumentException | DatabaseOperationException ex) {
+            logError("Error in getAllReservations", ex);
+            return new ArrayList<>();
         }
-        return List.of();
     }
 
     /**
      * Retrieves reservations for a specific user.
      *
      * @param userId the ID of the user.
-     * @return a list of reservations for the user.
+     * @return a list of reservations for the user; returns an empty list if an error occurs.
      */
     public List<Reservation> getUserReservations(String userId) {
         try {
@@ -89,23 +92,21 @@ public class ReservationController {
                 throw new IllegalArgumentException("User ID cannot be null or empty.");
             }
             return reservationDAO.getAllReservations(userId, false);
-        } catch (IllegalArgumentException e) {
-            System.out.println("Invalid input: " + e.getMessage());
-        } catch (DatabaseOperationException e) {
-            System.err.println("Database error: " + e.getMessage());
+        } catch (IllegalArgumentException | DatabaseOperationException ex) {
+            logError("Error in getUserReservations", ex);
+            return new ArrayList<>();
         }
-        return List.of();
     }
 
     /**
-     * Allows an admin to approve or reject a reservation.
+     * Allows an admin or media staff to approve or reject a reservation.
      *
      * @param reservationId the ID of the reservation to update.
-     * @param status        the new status for the reservation.
-     * @param adminId       the admin's ID performing the update.
+     * @param status        the new status for the reservation (e.g., "Approved" or "Rejected").
+     * @param staffId       the staff member's ID performing the update.
      * @return true if the update is successful; false otherwise.
      */
-    public boolean updateReservationStatus(int reservationId, String status, String adminId) {
+    public boolean updateReservationStatus(int reservationId, String status, String staffId) {
         try {
             if (reservationId <= 0) {
                 throw new IllegalArgumentException("Reservation ID must be greater than 0.");
@@ -113,21 +114,32 @@ public class ReservationController {
             if (status == null || status.trim().isEmpty()) {
                 throw new IllegalArgumentException("Status cannot be null or empty.");
             }
-            if (adminId == null || adminId.trim().isEmpty()) {
-                throw new IllegalArgumentException("Admin ID cannot be null or empty.");
+            if (staffId == null || staffId.trim().isEmpty()) {
+                throw new IllegalArgumentException("Staff ID cannot be null or empty.");
             }
 
-            String adminRole = userDAO.getUserRole(adminId);
-            RoleValidator.validateRole(adminRole, "Admin");
+            String adminRole = userDAO.getUserRole(staffId);
+            RoleValidator.validateRole(adminRole, "Admin", "MediaStaff");
 
-            return reservationDAO.approveReservation(reservationId, adminId, status);
-        } catch (IllegalArgumentException e) {
-            System.out.println("Invalid input: " + e.getMessage());
-        } catch (RoleAccessException e) {
-            System.err.println("Authorization error: " + e.getMessage());
-        } catch (DatabaseOperationException e) {
-            System.err.println("Database error: " + e.getMessage());
+            return reservationDAO.approveReservation(reservationId, staffId, status);
+        } catch (IllegalArgumentException | RoleAccessException | DatabaseOperationException ex) {
+            logError("Error in updateReservationStatus", ex);
+            return false;
         }
-        return false;
+    }
+
+    /**
+     * Logs detailed error information to a log file.
+     *
+     * @param message the error message to log.
+     * @param ex      the exception to log.
+     */
+    private void logError(String message, Exception ex) {
+        try (PrintWriter out = new PrintWriter(new FileWriter(LOG_FILE, true))) {
+            out.println("[" + java.time.LocalDateTime.now() + "] " + message);
+            ex.printStackTrace(out);
+        } catch (IOException ioEx) {
+            System.err.println("Failed to write to log file: " + ioEx.getMessage());
+        }
     }
 }

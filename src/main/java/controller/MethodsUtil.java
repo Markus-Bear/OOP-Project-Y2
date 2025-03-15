@@ -2,10 +2,16 @@ package controller;
 
 /**
  * Utility class for handling various methods for user, equipment, and reservation management.
+ * This class currently provides helper methods for retrieving lists of departments and available courses
+ * based on a given department.
  */
 public class MethodsUtil {
 
-    // Return the full list of departments.
+    /**
+     * Returns the full list of departments.
+     *
+     * @return an array of department names.
+     */
     public static String[] getDepartments() {
         return new String[]{
                 "Sport Management", "Architecture", "Arts & Social Studies", "Built Environment", "Business",
@@ -14,12 +20,11 @@ public class MethodsUtil {
         };
     }
 
-
     /**
      * Returns an array of courses based on the provided department.
      *
-     * @param department the department.
-     * @return an array of available courses.
+     * @param department the department for which courses are requested.
+     * @return an array of available courses for the specified department.
      */
     public static String[] getCoursesForDepartment(String department) {
         switch (department) {

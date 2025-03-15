@@ -1,24 +1,33 @@
 package controller;
 
+import exception.DatabaseOperationException;
 import exception.RoleAccessException;
 import model.Equipment;
 import model.EquipmentDAO;
 import model.UserDAO;
 import java.util.ArrayList;
 import java.util.List;
+import java.io.FileWriter;
+import java.io.PrintWriter;
+import java.io.IOException;
 
 /**
  * Provides high-level operations for managing equipment.
  * It performs role validation and calls methods from EquipmentDAO and UserDAO.
+ * <p>
+ * This controller encapsulates error handling by logging detailed error information to a log file,
+ * and returning generic values so that the GUI only receives a default error response.
+ * </p>
  */
 public class EquipmentController {
     private final EquipmentDAO equipmentDAO = new EquipmentDAO();
     private final UserDAO userDAO = new UserDAO();
+    private static final String LOG_FILE = "equipment_errors.log";
 
     /**
      * Retrieves all equipment available in the system.
      *
-     * @param userRole the role of the requester
+     * @param userRole the role of the requester.
      * @return a list of all equipment; if access is denied or an error occurs, returns an empty list.
      */
     public List<Equipment> getAllEquipment(String userRole) {
@@ -26,10 +35,13 @@ public class EquipmentController {
             RoleValidator.validateRole(userRole, "Admin", "MediaStaff", "Student", "Lecturer");
             return equipmentDAO.getAllEquipment();
         } catch (RoleAccessException e) {
-            System.err.println("Access Denied: " + e.getMessage());
+            logError("Access denied in getAllEquipment", e);
+            return new ArrayList<>();
+        } catch (DatabaseOperationException e) {
+            logError("Database error in getAllEquipment", e);
             return new ArrayList<>();
         } catch (Exception e) {
-            System.err.println("Error retrieving equipment: " + e.getMessage());
+            logError("Unexpected error in getAllEquipment", e);
             return new ArrayList<>();
         }
     }
@@ -46,10 +58,13 @@ public class EquipmentController {
             RoleValidator.validateRole(userRole, "Admin", "MediaStaff", "Student", "Lecturer");
             return equipmentDAO.getEquipmentByType(type);
         } catch (RoleAccessException e) {
-            System.err.println("Access Denied: " + e.getMessage());
+            logError("Access denied in getEquipmentByType", e);
+            return new ArrayList<>();
+        } catch (DatabaseOperationException e) {
+            logError("Database error in getEquipmentByType", e);
             return new ArrayList<>();
         } catch (Exception e) {
-            System.err.println("Error retrieving equipment by type: " + e.getMessage());
+            logError("Unexpected error in getEquipmentByType", e);
             return new ArrayList<>();
         }
     }
@@ -63,8 +78,11 @@ public class EquipmentController {
     public List<Equipment> getEquipmentByStatus(String status) {
         try {
             return equipmentDAO.getEquipmentByStatus(status);
+        } catch (DatabaseOperationException e) {
+            logError("Database error in getEquipmentByStatus", e);
+            return new ArrayList<>();
         } catch (Exception e) {
-            System.err.println("Error retrieving equipment by status: " + e.getMessage());
+            logError("Unexpected error in getEquipmentByStatus", e);
             return new ArrayList<>();
         }
     }
@@ -79,8 +97,11 @@ public class EquipmentController {
     public List<Equipment> getEquipmentByTypeAndStatus(String type, String status) {
         try {
             return equipmentDAO.getEquipmentByTypeAndStatus(type, status);
+        } catch (DatabaseOperationException e) {
+            logError("Database error in getEquipmentByTypeAndStatus", e);
+            return new ArrayList<>();
         } catch (Exception e) {
-            System.err.println("Error retrieving equipment by type and status: " + e.getMessage());
+            logError("Unexpected error in getEquipmentByTypeAndStatus", e);
             return new ArrayList<>();
         }
     }
@@ -96,16 +117,19 @@ public class EquipmentController {
         try {
             String userRole = userDAO.getUserRole(userId);
             if (userRole == null) {
-                System.err.println("User role is NULL. User may not exist!");
+                logError("User role is null in addEquipment", new Exception("User role is null"));
                 return false;
             }
             RoleValidator.validateRole(userRole, "Admin", "MediaStaff");
             return equipmentDAO.addEquipment(newEquipment, userId);
         } catch (RoleAccessException e) {
-            System.err.println("Access Denied: " + e.getMessage());
+            logError("Access denied in addEquipment", e);
+            return false;
+        } catch (DatabaseOperationException e) {
+            logError("Database error in addEquipment", e);
             return false;
         } catch (Exception e) {
-            System.err.println("Failed to add equipment: " + e.getMessage());
+            logError("Unexpected error in addEquipment", e);
             return false;
         }
     }
@@ -121,16 +145,19 @@ public class EquipmentController {
         try {
             String userRole = userDAO.getUserRole(userId);
             if (userRole == null) {
-                System.err.println("User role is NULL. User may not exist!");
+                logError("User role is null in updateEquipment", new Exception("User role is null"));
                 return false;
             }
             RoleValidator.validateRole(userRole, "Admin", "MediaStaff");
             return equipmentDAO.updateEquipment(updatedEquipment, userId);
         } catch (RoleAccessException e) {
-            System.err.println("Access Denied: " + e.getMessage());
+            logError("Access denied in updateEquipment", e);
+            return false;
+        } catch (DatabaseOperationException e) {
+            logError("Database error in updateEquipment", e);
             return false;
         } catch (Exception e) {
-            System.err.println("Failed to update equipment: " + e.getMessage());
+            logError("Unexpected error in updateEquipment", e);
             return false;
         }
     }
@@ -146,17 +173,35 @@ public class EquipmentController {
         try {
             String userRole = userDAO.getUserRole(userId);
             if (userRole == null) {
-                System.err.println("User role is NULL. User may not exist!");
+                logError("User role is null in deleteEquipment", new Exception("User role is null"));
                 return false;
             }
             RoleValidator.validateRole(userRole, "Admin", "MediaStaff");
             return equipmentDAO.deleteEquipment(equipmentId, userId);
         } catch (RoleAccessException e) {
-            System.err.println("Access Denied: " + e.getMessage());
+            logError("Access denied in deleteEquipment", e);
+            return false;
+        } catch (DatabaseOperationException e) {
+            logError("Database error in deleteEquipment", e);
             return false;
         } catch (Exception e) {
-            System.err.println("Failed to delete equipment: " + e.getMessage());
+            logError("Unexpected error in deleteEquipment", e);
             return false;
+        }
+    }
+
+    /**
+     * Logs detailed error information to a log file.
+     *
+     * @param message a message describing the context of the error.
+     * @param ex      the exception to log.
+     */
+    private void logError(String message, Exception ex) {
+        try (PrintWriter out = new PrintWriter(new FileWriter(LOG_FILE, true))) {
+            out.println("[" + java.time.LocalDateTime.now() + "] " + message);
+            ex.printStackTrace(out);
+        } catch (IOException ioEx) {
+            System.err.println("Failed to write to log file: " + ioEx.getMessage());
         }
     }
 }

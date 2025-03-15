@@ -23,8 +23,8 @@ public class CheckoutDAO {
      * Retrieves a list of pending reservations that are approved but not yet checked out.
      * The returned list contains reservation details formatted as a string.
      *
-     * @return a list of pending checkout details
-     * @throws DatabaseOperationException if a database error occurs
+     * @return a list of pending checkout details.
+     * @throws DatabaseOperationException if a database error occurs.
      */
     public List<String> getPendingCheckouts() throws DatabaseOperationException {
         List<String> pendingReservations = new ArrayList<>();
@@ -61,11 +61,11 @@ public class CheckoutDAO {
      * Checks out equipment by calling the stored procedure {@code CheckOutEquipment}.
      * This method registers an OUT parameter for the number of affected rows.
      *
-     * @param reservationId the reservation ID to check out
-     * @param staffId       the staff ID performing the checkout
-     * @return true if the checkout was successful; false otherwise
-     * @throws DatabaseOperationException if a database error occurs
-     * @throws IllegalArgumentException   if reservationId is less than or equal to 0 or if staffId is null or empty
+     * @param reservationId the reservation ID to check out.
+     * @param staffId       the staff member's ID performing the checkout.
+     * @return true if the checkout was successful; false otherwise.
+     * @throws DatabaseOperationException if a database error occurs.
+     * @throws IllegalArgumentException   if reservationId is less than or equal to 0 or if staffId is null or empty.
      */
     public boolean checkOutEquipment(int reservationId, String staffId) throws DatabaseOperationException {
         if (reservationId <= 0) {
@@ -98,12 +98,12 @@ public class CheckoutDAO {
      * The stored procedure takes the reservation ID, staff ID, and equipment state as parameters and
      * returns the number of affected rows as an OUT parameter.
      *
-     * @param reservationId  the reservation ID of the checked-out equipment
-     * @param staffId        the staff ID performing the check-in
-     * @param equipmentState the state of the equipment (e.g., Good, Fair, Poor)
-     * @return true if the check-in was successful; false otherwise
-     * @throws DatabaseOperationException if a database error occurs
-     * @throws IllegalArgumentException   if reservationId is less than or equal to 0, staffId is null/empty, or equipmentState is null/empty
+     * @param reservationId  the reservation ID of the checked-out equipment.
+     * @param staffId        the staff member's ID performing the check-in.
+     * @param equipmentState the state of the equipment (e.g., Good, Fair, Poor).
+     * @return true if the check-in was successful; false otherwise.
+     * @throws DatabaseOperationException if a database error occurs.
+     * @throws IllegalArgumentException   if reservationId is less than or equal to 0, staffId is null/empty, or equipmentState is null/empty.
      */
     public boolean checkInEquipment(int reservationId, String staffId, String equipmentState) throws DatabaseOperationException {
         if (reservationId <= 0) {

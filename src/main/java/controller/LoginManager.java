@@ -61,17 +61,13 @@ public class LoginManager {
     }
 
     // In controller/LoginManager.java
-    public User loginUser(String email, String password) throws AuthenticationException {
+    public User loginUser(String email, String password) throws AuthenticationException, DatabaseOperationException {
         if(email == null || email.trim().isEmpty() || password == null || password.trim().isEmpty()){
             throw new AuthenticationException("Email or password cannot be empty.");
         }
 
         User user = null;
-        try {
-            user = userController.login(email, password);
-        } catch (DatabaseOperationException e) {
-            throw new RuntimeException(e);
-        }
+        user = userController.login(email, password);
         if(user == null){
             throw new AuthenticationException("Invalid credentials. Please try again.");
         }

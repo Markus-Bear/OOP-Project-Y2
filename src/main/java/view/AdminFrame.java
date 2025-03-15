@@ -1,6 +1,5 @@
 package view;
 
-
 import controller.*;
 import model.User;
 import model.Equipment;
@@ -32,6 +31,8 @@ import javax.swing.BorderFactory;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.plaf.basic.BasicButtonUI;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import java.awt.Component;
 import java.awt.BorderLayout;
 import java.awt.GridLayout;
@@ -51,11 +52,20 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.data.category.DefaultCategoryDataset;
 import org.jfree.data.general.DefaultPieDataset;
 
-
+/**
+ * AdminFrame is the main GUI window for Admin users in the Media Equipment Rental System.
+ * It provides multiple tabs to manage various aspects of the system including Home (dashboard),
+ * Profile view, User management, Equipment management, and Reservations management.
+ */
 public class AdminFrame extends JFrame {
     private User loggedInUser;
     private JTabbedPane tabbedPane;
 
+    /**
+     * Constructs an AdminFrame for the given user.
+     *
+     * @param user the authenticated User object representing an Admin.
+     */
     public AdminFrame(User user) {
         this.loggedInUser = user;
         setTitle("Media Equipment Rental System - Admin Menu - " + user.getName());
@@ -66,16 +76,31 @@ public class AdminFrame extends JFrame {
         JPanel mainPanel = new JPanel(new BorderLayout());
         tabbedPane = new JTabbedPane();
 
-        // Create tabs (Home tab added first)
+        // Creates and adds tabs.
         tabbedPane.addTab("Home", new HomePanel(loggedInUser));
         tabbedPane.addTab("View Profile", new ViewProfilePanel(loggedInUser));
         tabbedPane.addTab("User Management", new UserManagementPanel(loggedInUser.getUserId()));
         tabbedPane.addTab("Equipment Management", new EquipmentManagementPanel(loggedInUser.getUserId()));
         tabbedPane.addTab("Reservations Management", new ReservationsManagementPanel(loggedInUser.getUserId()));
 
+        // Adds a ChangeListener to refresh any tab that implements the  Refreshable interface.
+        tabbedPane.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                Component selected = tabbedPane.getSelectedComponent();
+                if (selected instanceof Refreshable) {
+                    try {
+                        ((Refreshable) selected).refresh();
+                    } catch (DatabaseOperationException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            }
+        });
+
         mainPanel.add(tabbedPane, BorderLayout.CENTER);
 
-        // Log out button at bottom right.
+        // Bottom panel with a log-out button at the bottom right.
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton logoutButton = new JButton("Log out");
         logoutButton.setBackground(Color.DARK_GRAY);
@@ -93,59 +118,79 @@ public class AdminFrame extends JFrame {
         add(mainPanel);
     }
 
-    // --------------------------
-    // Home Panel (new)
-    // --------------------------
-    // Inside your AdminFrame class:
-    // Inside your AdminFrame class:
-    class HomePanel extends JPanel {
-        private ChartPanel reservationsStatusChartPanel;
-        private Timer timer;
-        private User loggedInUser; // access to the logged in user
+    // =========================
+    // Inner Classes for Panels
+    // =========================
 
+    /**
+     * HomePanel displays an overview of system statistics using charts.
+     * It includes charts for equipment states, checked-out equipment, reservation status, and user reservations.
+     * The panel automatically refreshes its charts every 3 seconds.
+     */
+    class HomePanel extends JPanel {
+        private ChartPanel equipmentStateChartPanel;
+        private ChartPanel checkedOutChartPanel;
+        private ChartPanel reservationsStatusChartPanel;
+        private ChartPanel userReservationsChartPanel;
+        private Timer timer;
+        private User loggedInUser; // Logged-in user for context
+
+        /**
+         * Constructs a HomePanel for the specified user.
+         *
+         * @param user the logged-in User.
+         */
         public HomePanel(User user) {
             this.loggedInUser = user;
-            // Use a GridLayout (2 rows x 2 columns) for four charts.
-            setLayout(new GridLayout(2, 2, 10, 10)); // 10px horizontal & vertical gaps
-
-            int chartSize = 300; // width and height (adjust as needed)
+            // Use a (2 rows x 2 columns) GridLayout with 10px gaps.
+            setLayout(new GridLayout(2, 2, 10, 10));
+            int chartSize = 300;
 
             // Equipment States Chart (Bar Chart)
-            JFreeChart equipmentStateChart = createEquipmentStateChart();
-            ChartPanel cp1 = new ChartPanel(equipmentStateChart);
-            cp1.setPreferredSize(new Dimension(chartSize, chartSize));
-            add(cp1);
+            equipmentStateChartPanel = new ChartPanel(createEquipmentStateChart());
+            equipmentStateChartPanel.setPreferredSize(new Dimension(chartSize, chartSize));
+            add(equipmentStateChartPanel);
 
             // Checked Out Equipment Chart (Pie Chart)
-            JFreeChart checkedOutChart = createCheckedOutChart();
-            ChartPanel cp2 = new ChartPanel(checkedOutChart);
-            cp2.setPreferredSize(new Dimension(chartSize, chartSize));
-            add(cp2);
+            checkedOutChartPanel = new ChartPanel(createCheckedOutChart());
+            checkedOutChartPanel.setPreferredSize(new Dimension(chartSize, chartSize));
+            add(checkedOutChartPanel);
 
             // Reservations Status Chart (Bar Chart: Pending vs Approved)
-            JFreeChart reservationsStatusChart = createReservationsStatusChart();
-            reservationsStatusChartPanel = new ChartPanel(reservationsStatusChart);
+            reservationsStatusChartPanel = new ChartPanel(createReservationsStatusChart());
             reservationsStatusChartPanel.setPreferredSize(new Dimension(chartSize, chartSize));
             add(reservationsStatusChartPanel);
 
             // User Reservations Chart (Bar Chart)
-            JFreeChart userReservationsChart = createUserReservationsOverTimeChart();
-            ChartPanel cp4 = new ChartPanel(userReservationsChart);
-            cp4.setPreferredSize(new Dimension(chartSize, chartSize));
-            add(cp4);
+            userReservationsChartPanel = new ChartPanel(createUserReservationsOverTimeChart());
+            userReservationsChartPanel.setPreferredSize(new Dimension(chartSize, chartSize));
+            add(userReservationsChartPanel);
 
-            // Set up a Timer to update the Reservations Status Chart every 5 seconds.
-            timer = new Timer(5000, e -> updateReservationsStatusChart());
+            // Set up a Timer to update all Charts every 3 seconds.
+            timer = new Timer(3000, e -> updateAllCharts());
             timer.start();
         }
 
-        // This method updates the Reservations Status Chart dynamically.
-        private void updateReservationsStatusChart() {
-            JFreeChart updatedChart = createReservationsStatusChart();
-            reservationsStatusChartPanel.setChart(updatedChart);
+        /**
+         * Updates all charts by recreating them.
+         */
+        private void updateAllCharts() {
+            equipmentStateChartPanel.setChart(createEquipmentStateChart());
+            checkedOutChartPanel.setChart(createCheckedOutChart());
+            reservationsStatusChartPanel.setChart(createReservationsStatusChart());
+            userReservationsChartPanel.setChart(createUserReservationsOverTimeChart());
+            // Optionally, force a repaint:
+            equipmentStateChartPanel.repaint();
+            checkedOutChartPanel.repaint();
+            reservationsStatusChartPanel.repaint();
+            userReservationsChartPanel.repaint();
         }
 
-        // Creates a bar chart for Equipment States.
+        /**
+         * Creates a bar chart displaying the counts of equipment in different states.
+         *
+         * @return a JFreeChart object representing the equipment states.
+         */
         private JFreeChart createEquipmentStateChart() {
             EquipmentController ec = new EquipmentController();
             // Use the current user's role for filtering. (Assuming getAllEquipment() accepts a role.)
@@ -168,7 +213,11 @@ public class AdminFrame extends JFrame {
             return chart;
         }
 
-        // Creates a pie chart for Checked Out Equipment.
+        /**
+         * Creates a pie chart comparing the count of checked-out equipment against available equipment.
+         *
+         * @return a JFreeChart object representing checked-out equipment.
+         */
         private JFreeChart createCheckedOutChart() {
             CheckoutController cc = new CheckoutController();
             List<String> checkedOut = cc.getCheckedOutEquipment();
@@ -185,7 +234,11 @@ public class AdminFrame extends JFrame {
             return chart;
         }
 
-        // Creates a bar chart comparing pending and approved reservations.
+        /**
+         * Creates a bar chart comparing pending and approved reservations.
+         *
+         * @return a JFreeChart object representing reservation statuses.
+         */
         private JFreeChart createReservationsStatusChart() {
             ReservationController rc = new ReservationController();
             // Use the current user's ID to filter reservations.
@@ -211,7 +264,11 @@ public class AdminFrame extends JFrame {
             return chart;
         }
 
-        // Creates a bar chart for User Reservations.
+        /**
+         * Creates a bar chart showing the number of reservations per user.
+         *
+         * @return a JFreeChart object representing user reservations.
+         */
         private JFreeChart createUserReservationsOverTimeChart() {
             ReservationController rc = new ReservationController();
             List<Reservation> reservations = rc.getAllReservations(loggedInUser.getUserId());
@@ -233,11 +290,15 @@ public class AdminFrame extends JFrame {
         }
     }
 
-
-    // --------------------------
-    // View Profile Panel
-    // --------------------------
+    /**
+     * ViewProfilePanel displays the logged-in user's profile information.
+     */
     class ViewProfilePanel extends JPanel {
+        /**
+         * Constructs a ViewProfilePanel for the specified user.
+         *
+         * @param user the logged-in User.
+         */
         public ViewProfilePanel(User user) {
             setLayout(new GridBagLayout());
             GridBagConstraints gridBagConstraints = new GridBagConstraints();
@@ -279,7 +340,12 @@ public class AdminFrame extends JFrame {
         }
     }
 
-
+    /**
+     * Creates a JButton styled as a menu item with rollover and pressed effects.
+     *
+     * @param text the button label.
+     * @return the styled JButton.
+     */
     private JButton createMenuItem(String text) {
         JButton button = new JButton(text);
         // Force a basic UI that respects our background color changes.
@@ -327,19 +393,24 @@ public class AdminFrame extends JFrame {
         return button;
     }
 
-
-    // --------------------------
-    // User Management Panel
-    // --------------------------
-    class UserManagementPanel extends JPanel {
+    /**
+     * UserManagementPanel provides an interface for managing users, including viewing,
+     * adding, updating, and deleting users.
+     */
+    class UserManagementPanel extends JPanel implements Refreshable {
         private String adminId;
         private JPanel contentPanel;
 
+        /**
+         * Constructs a UserManagementPanel for the given admin.
+         *
+         * @param adminId the ID of the admin.
+         */
         public UserManagementPanel(String adminId) {
             this.adminId = adminId;
 
 
-            // Sidebar with MenuItems
+            // Create sidebar with menu buttons.
             JPanel sidebar = new JPanel();
             sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
             sidebar.setBackground(Color.DARK_GRAY);
@@ -359,7 +430,7 @@ public class AdminFrame extends JFrame {
             sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
             sidebar.add(buttonDeleteUser);
 
-            // Create content panel (initially with a placeholder)
+            // Create content panel with a placeholder.
             contentPanel = new JPanel(new BorderLayout());
             JLabel placeholderLabel = new JLabel("Select an option from the sidebar.");
             placeholderLabel.setHorizontalAlignment(SwingConstants.CENTER);
@@ -376,83 +447,128 @@ public class AdminFrame extends JFrame {
             setLayout(new BorderLayout());
             add(splitPane, BorderLayout.CENTER);
 
-            // Action listeners
-            buttonViewAllUsers.addActionListener(e -> loadViewAllUsers());
-            buttonAddUser.addActionListener(e -> loadAddUser());
-            buttonUpdateUser.addActionListener(e -> loadUpdateUser());
-            buttonDeleteUser.addActionListener(e -> loadDeleteUser());
-        }
-
-        private void loadViewAllUsers() {
-            final UserController uc = new UserController();
-            try {
-                final List<User> users = uc.getAllUsers("Admin");
-                String[] columnNames = {"User ID", "Email", "Name", "Role"};
-                DefaultTableModel model = new DefaultTableModel(columnNames, 0);
-                for (User user : users) {
-                    Object[] row = { user.getUserId(), user.getEmail(), user.getName(), user.getRole() };
-                    model.addRow(row);
+            // Set up action listeners.
+            buttonViewAllUsers.addActionListener(e -> {
+                try {
+                    loadViewAllUsers();
+                } catch (DatabaseOperationException ex) {
+                    throw new RuntimeException(ex);
                 }
-                JTable table = new JTable(model);
-
-                // Center text in some columns
-                DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
-                centerRenderer.setHorizontalAlignment(JLabel.CENTER);
-                table.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
-
-                contentPanel.removeAll();
-                contentPanel.add(new JScrollPane(table), BorderLayout.CENTER);
-                contentPanel.revalidate();
-                contentPanel.repaint();
-            } catch (DatabaseOperationException ex) {
-                JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
-            }
+            });
+            buttonAddUser.addActionListener(e -> loadAddUser());
+            buttonUpdateUser.addActionListener(e -> {
+                try {
+                    loadUpdateUser();
+                } catch (DatabaseOperationException ex) {
+                    throw new RuntimeException(ex);
+                }
+            });
+            buttonDeleteUser.addActionListener(e -> {
+                try {
+                    loadDeleteUser();
+                } catch (DatabaseOperationException ex) {
+                    throw new RuntimeException(ex);
+                }
+            });
         }
 
+        /**
+         * Refreshes the panel by reloading the view all users table.
+         *
+         * @throws DatabaseOperationException if an error occurs during data retrieval.
+         */
+        public void refresh() throws DatabaseOperationException {
+            loadViewAllUsers();
+        }
+
+        /**
+         * Loads all users from the database and displays them in a table.
+         *
+         * @throws DatabaseOperationException if a database error occurs.
+         */
+        private void loadViewAllUsers() throws DatabaseOperationException {
+            final UserController uc = new UserController();
+            final List<User> users = uc.getAllUsers("Admin");
+            String[] columnNames = {"User ID", "Email", "Name", "Role"};
+            DefaultTableModel model = new DefaultTableModel(columnNames, 0){
+                @Override
+                public boolean isCellEditable(int row, int column){
+                    return false;
+                }
+            };
+
+            for (User user : users) {
+                Object[] row = { user.getUserId(), user.getEmail(), user.getName(), user.getRole() };
+                model.addRow(row);
+            }
+
+
+            JTable table = new JTable(model);
+
+            // Center text in some columns
+            DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+            centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+            table.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
+
+            contentPanel.removeAll();
+            contentPanel.add(new JScrollPane(table), BorderLayout.CENTER);
+            contentPanel.revalidate();
+            contentPanel.repaint();
+        }
+
+        /**
+         * Loads the "Add User" form into the panel.
+         */
         private void loadAddUser() {
             // Main panel for the Add User form.
             JPanel addPanel = new JPanel(new GridBagLayout());
-            GridBagConstraints gbc = new GridBagConstraints();
-            gbc.insets = new Insets(5, 5, 5, 5);
-            gbc.fill = GridBagConstraints.HORIZONTAL;
+            GridBagConstraints gridBagConstraint = new GridBagConstraints();
+            gridBagConstraint.insets = new Insets(5, 5, 5, 5);
+            gridBagConstraint.fill = GridBagConstraints.HORIZONTAL;
 
             // Row 0: Role selection
             JLabel labelRole = new JLabel("Role:");
             String[] roles = {"Student", "Lecturer", "Admin", "MediaStaff"};
             JComboBox<String> comboBoxRole = new JComboBox<>(roles);
-            gbc.gridx = 0; gbc.gridy = 0;
-            addPanel.add(labelRole, gbc);
-            gbc.gridx = 1;
-            addPanel.add(comboBoxRole, gbc);
+            gridBagConstraint.gridx = 0;
+            gridBagConstraint.gridy = 0;
+            addPanel.add(labelRole, gridBagConstraint);
+            gridBagConstraint.gridx = 1;
+            addPanel.add(comboBoxRole, gridBagConstraint);
 
             // Row 1: Email
             JLabel labelEmail = new JLabel("Email:");
             JTextField textFieldEmail = new JTextField(20);
-            gbc.gridx = 0; gbc.gridy = 1;
-            addPanel.add(labelEmail, gbc);
-            gbc.gridx = 1;
-            addPanel.add(textFieldEmail, gbc);
+            gridBagConstraint.gridx = 0;
+            gridBagConstraint.gridy = 1;
+            addPanel.add(labelEmail, gridBagConstraint);
+            gridBagConstraint.gridx = 1;
+            addPanel.add(textFieldEmail, gridBagConstraint);
 
             // Row 2: Name
             JLabel labelName = new JLabel("Name:");
             JTextField textFieldName = new JTextField(20);
-            gbc.gridx = 0; gbc.gridy = 2;
-            addPanel.add(labelName, gbc);
-            gbc.gridx = 1;
-            addPanel.add(textFieldName, gbc);
+            gridBagConstraint.gridx = 0;
+            gridBagConstraint.gridy = 2;
+            addPanel.add(labelName, gridBagConstraint);
+            gridBagConstraint.gridx = 1;
+            addPanel.add(textFieldName, gridBagConstraint);
 
             // Row 3: Password
             JLabel labelPassword = new JLabel("Password:");
             JPasswordField pfPassword = new JPasswordField(20);
-            gbc.gridx = 0; gbc.gridy = 3;
-            addPanel.add(labelPassword, gbc);
-            gbc.gridx = 1;
-            addPanel.add(pfPassword, gbc);
+            gridBagConstraint.gridx = 0;
+            gridBagConstraint.gridy = 3;
+            addPanel.add(labelPassword, gridBagConstraint);
+            gridBagConstraint.gridx = 1;
+            addPanel.add(pfPassword, gridBagConstraint);
 
             // Row 4: Extra panel for additional fields (Department, Course, and Year for Student)
             JPanel extraPanel = new JPanel(new GridBagLayout());
-            gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 2;
-            addPanel.add(extraPanel, gbc);
+            gridBagConstraint.gridx = 0;
+            gridBagConstraint.gridy = 4;
+            gridBagConstraint.gridwidth = 2;
+            addPanel.add(extraPanel, gridBagConstraint);
 
             // Get full list of departments from MethodsUtil.
             final String[] departments = controller.MethodsUtil.getDepartments();
@@ -462,29 +578,31 @@ public class AdminFrame extends JFrame {
             // Runnable to update extraPanel based on selected role.
             Runnable updateExtraPanel = () -> {
                 extraPanel.removeAll();
-                GridBagConstraints gbcExtra = new GridBagConstraints();
-                gbcExtra.insets = new Insets(5, 5, 5, 5);
-                gbcExtra.fill = GridBagConstraints.HORIZONTAL;
-                gbcExtra.gridx = 0;
-                gbcExtra.gridy = 0;
+                GridBagConstraints gridBagConstraintExtra = new GridBagConstraints();
+                gridBagConstraintExtra.insets = new Insets(5, 5, 5, 5);
+                gridBagConstraintExtra.fill = GridBagConstraints.HORIZONTAL;
+                gridBagConstraintExtra.gridx = 0;
+                gridBagConstraintExtra.gridy = 0;
                 String selectedRole = (String) comboBoxRole.getSelectedItem();
                 if ("Student".equalsIgnoreCase(selectedRole)) {
                     // For Student, add Department, Course, and Year.
                     JLabel labelDept = new JLabel("Department:");
                     JComboBox<String> comboBoxDept = new JComboBox<>(departments);
-                    gbcExtra.gridx = 0; gbcExtra.gridy = 0;
-                    extraPanel.add(labelDept, gbcExtra);
-                    gbcExtra.gridx = 1;
-                    extraPanel.add(comboBoxDept, gbcExtra);
+                    gridBagConstraintExtra.gridx = 0;
+                    gridBagConstraintExtra.gridy = 0;
+                    extraPanel.add(labelDept, gridBagConstraintExtra);
+                    gridBagConstraintExtra.gridx = 1;
+                    extraPanel.add(comboBoxDept, gridBagConstraintExtra);
 
                     JLabel labelCourse = new JLabel("Course:");
                     String selectedDept = (String) comboBoxDept.getSelectedItem();
                     String[] courses = controller.MethodsUtil.getCoursesForDepartment(selectedDept);
                     JComboBox<String> cbCourse = new JComboBox<>(courses);
-                    gbcExtra.gridx = 0; gbcExtra.gridy = 1;
-                    extraPanel.add(labelCourse, gbcExtra);
-                    gbcExtra.gridx = 1;
-                    extraPanel.add(cbCourse, gbcExtra);
+                    gridBagConstraintExtra.gridx = 0;
+                    gridBagConstraintExtra.gridy = 1;
+                    extraPanel.add(labelCourse, gridBagConstraintExtra);
+                    gridBagConstraintExtra.gridx = 1;
+                    extraPanel.add(cbCourse, gridBagConstraintExtra);
 
                     // Add listener to update courses when department changes.
                     comboBoxDept.addActionListener(e -> {
@@ -497,18 +615,20 @@ public class AdminFrame extends JFrame {
                     JLabel labelYear = new JLabel("Year:");
                     JTextField textFieldYear = new JTextField(5);
                     yearFieldHolder[0] = textFieldYear;
-                    gbcExtra.gridx = 0; gbcExtra.gridy = 2;
-                    extraPanel.add(labelYear, gbcExtra);
-                    gbcExtra.gridx = 1;
-                    extraPanel.add(textFieldYear, gbcExtra);
+                    gridBagConstraintExtra.gridx = 0;
+                    gridBagConstraintExtra.gridy = 2;
+                    extraPanel.add(labelYear, gridBagConstraintExtra);
+                    gridBagConstraintExtra.gridx = 1;
+                    extraPanel.add(textFieldYear, gridBagConstraintExtra);
                 } else if ("Lecturer".equalsIgnoreCase(selectedRole)) {
                     // For Lecturer, add only Department.
                     JLabel labelDept = new JLabel("Department:");
                     JComboBox<String> comboBoxDept = new JComboBox<>(departments);
-                    gbcExtra.gridx = 0; gbcExtra.gridy = 0;
-                    extraPanel.add(labelDept, gbcExtra);
-                    gbcExtra.gridx = 1;
-                    extraPanel.add(comboBoxDept, gbcExtra);
+                    gridBagConstraintExtra.gridx = 0;
+                    gridBagConstraintExtra.gridy = 0;
+                    extraPanel.add(labelDept, gridBagConstraintExtra);
+                    gridBagConstraintExtra.gridx = 1;
+                    extraPanel.add(comboBoxDept, gridBagConstraintExtra);
                 }
                 extraPanel.revalidate();
                 extraPanel.repaint();
@@ -525,8 +645,8 @@ public class AdminFrame extends JFrame {
             addUserButton.setPreferredSize(new Dimension(30, 30));
             addUserButton.setMaximumSize(new Dimension(30, 30));
             addUserButton.setFocusPainted(false);
-            gbc.gridx = 0; gbc.gridy = 5; gbc.gridwidth = 2;
-            addPanel.add(addUserButton, gbc);
+            gridBagConstraint.gridx = 0; gridBagConstraint.gridy = 5; gridBagConstraint.gridwidth = 2;
+            addPanel.add(addUserButton, gridBagConstraint);
 
             addUserButton.addActionListener(e -> {
                 try {
@@ -610,328 +730,354 @@ public class AdminFrame extends JFrame {
             contentPanel.repaint();
         }
 
-
-        private void loadUpdateUser() {
+        /**
+         * Loads the "Update User" form panel.
+         *
+         * @throws DatabaseOperationException if a database error occurs.
+         */
+        private void loadUpdateUser() throws DatabaseOperationException {
             final UserController userController = new UserController();
-            try {
-                final List<User> users = userController.getAllUsers("Admin");
-                JPanel updatePanel = new JPanel(new BorderLayout());
-                String[] columnNames = {"User ID", "Email", "Name", "Role"};
-                final DefaultTableModel model = new DefaultTableModel(columnNames, 0);
-                for (User user : users) {
-                    Object[] row = { user.getUserId(), user.getEmail(), user.getName(), user.getRole() };
-                    model.addRow(row);
+            final List<User> users = userController.getAllUsers("Admin");
+            JPanel updatePanel = new JPanel(new BorderLayout());
+            String[] columnNames = {"User ID", "Email", "Name", "Role"};
+            final DefaultTableModel model = new DefaultTableModel(columnNames, 0){
+                @Override
+                public boolean isCellEditable(int row, int column){
+                    return false;
                 }
-                final JTable table = new JTable(model);
+            };
+            for (User user : users) {
+                Object[] row = { user.getUserId(), user.getEmail(), user.getName(), user.getRole() };
+                model.addRow(row);
+            }
+            final JTable table = new JTable(model);
 
-                // Center text in some columns
-                DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
-                centerRenderer.setHorizontalAlignment(JLabel.CENTER);
-                table.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
+            // Center text in some columns
+            DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+            centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+            table.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
 
-                JScrollPane scrollPane = new JScrollPane(table);
-                updatePanel.add(scrollPane, BorderLayout.CENTER);
-                JButton updateUserButton = new JButton("Update Selected User");
-                updateUserButton.setBackground(Color.LIGHT_GRAY);
-                updateUserButton.setForeground(Color.DARK_GRAY);
+            JScrollPane scrollPane = new JScrollPane(table);
+            updatePanel.add(scrollPane, BorderLayout.CENTER);
+            JButton updateUserButton = new JButton("Update Selected User");
+            updateUserButton.setBackground(Color.LIGHT_GRAY);
+            updateUserButton.setForeground(Color.DARK_GRAY);
+            updateUserButton.setPreferredSize(new Dimension(30, 30));
+            updateUserButton.setMaximumSize(new Dimension(30, 30));
+            updateUserButton.setFocusPainted(false);
+            updatePanel.add(updateUserButton, BorderLayout.SOUTH);
+            updateUserButton.addActionListener(e -> {
+                int selectedRow = table.getSelectedRow();
+                if(selectedRow < 0){
+                    JOptionPane.showMessageDialog(this, "Please select a user to edit.");
+                    return;
+                }
+                String userId = (String) model.getValueAt(selectedRow, 0);
+                User selectedUser = userController.getUserById(userId);
+                if(selectedUser == null){
+                    JOptionPane.showMessageDialog(this, "User not found.");
+                    return;
+                }
+                JPanel editPanel = new JPanel(new GridBagLayout());
+                GridBagConstraints gridBagConstraints = new GridBagConstraints();
+                gridBagConstraints.insets = new Insets(5, 5, 5, 5);
+                gridBagConstraints.fill = GridBagConstraints.HORIZONTAL;
+
+                JLabel labelEmail = new JLabel("Email:");
+                JTextField textFieldEmail = new JTextField(selectedUser.getEmail(), 20);
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 0;
+                editPanel.add(labelEmail, gridBagConstraints);
+                gridBagConstraints.gridx = 1;
+                editPanel.add(textFieldEmail, gridBagConstraints);
+
+
+                JLabel labelName = new JLabel("Name:");
+                JTextField textFieldName = new JTextField(selectedUser.getName(), 20);
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 1;
+                editPanel.add(labelName, gridBagConstraints);
+                gridBagConstraints.gridx = 1;
+                editPanel.add(textFieldName, gridBagConstraints);
+
+                JLabel labelRole = new JLabel("Role:");
+                JTextField textFieldRole = new JTextField(selectedUser.getRole(), 20);
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 2;
+                editPanel.add(labelRole, gridBagConstraints);
+                gridBagConstraints.gridx = 1;
+                editPanel.add(textFieldRole, gridBagConstraints);
+                textFieldRole.setEditable(false); // Role not editable in update
+
+                final String PASSWORD_PLACEHOLDER = "********";
+                JLabel labelPassword = new JLabel("Password:");
+                JPasswordField passwordField = new JPasswordField( PASSWORD_PLACEHOLDER,20);
+                passwordField.setEchoChar('*');
+                // A focus listener so that when the field gains focus, if it contains
+                // the placeholder it's cleared, and when it loses focus and is empty, the placeholder is restored.
+                passwordField.addFocusListener(new FocusAdapter() {
+                    @Override
+                    public void focusGained(FocusEvent e) {
+                        String current = new String(passwordField.getPassword());
+                        if (current.equals(PASSWORD_PLACEHOLDER)) {
+                            passwordField.setText("");
+                        }
+                    }
+
+                    @Override
+                    public void focusLost(FocusEvent e) {
+                        String current = new String(passwordField.getPassword());
+                        if (current.isEmpty()) {
+                            passwordField.setText(PASSWORD_PLACEHOLDER);
+                        }
+                    }
+                });
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 3;
+                editPanel.add(labelPassword, gridBagConstraints);
+                gridBagConstraints.gridx = 1;
+                editPanel.add(passwordField, gridBagConstraints);
+
+                JPanel extraPanel = new JPanel(new GridBagLayout());
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 4;
+                gridBagConstraints.gridwidth = 2;
+                editPanel.add(extraPanel, gridBagConstraints);
+
+                JButton updateUserSubmitButton = new JButton("Update User");
+                updateUserSubmitButton.setBackground(Color.LIGHT_GRAY);
+                updateUserSubmitButton.setForeground(Color.DARK_GRAY);
                 updateUserButton.setPreferredSize(new Dimension(30, 30));
                 updateUserButton.setMaximumSize(new Dimension(30, 30));
-                updateUserButton.setFocusPainted(false);
-                updatePanel.add(updateUserButton, BorderLayout.SOUTH);
-                updateUserButton.addActionListener(e -> {
-                    int selectedRow = table.getSelectedRow();
-                    if(selectedRow < 0){
-                        JOptionPane.showMessageDialog(this, "Please select a user to edit.");
-                        return;
-                    }
-                    String userId = (String) model.getValueAt(selectedRow, 0);
-                    try {
-                        User selectedUser = userController.getUserById(userId);
-                        if(selectedUser == null){
-                            JOptionPane.showMessageDialog(this, "User not found.");
-                            return;
+                updateUserSubmitButton.setFocusPainted(false);
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 5;
+                gridBagConstraints.gridwidth = 2;
+                editPanel.add(updateUserSubmitButton, gridBagConstraints);
+
+
+                // Get full list of departments from MethodsUtil.
+                final String[] departments = MethodsUtil.getDepartments();
+                // Holder for the Year text field (if needed).
+                final JTextField[] yearFieldHolder = new JTextField[1];
+
+                // Runnable to update extraPanel based on selected role.
+                Runnable updateExtraPanel = () -> {
+                    extraPanel.removeAll();
+                    GridBagConstraints gridBagConstraintsExtra = new GridBagConstraints();
+                    gridBagConstraintsExtra.insets = new Insets(5, 5, 5, 5);
+                    gridBagConstraintsExtra.fill = GridBagConstraints.HORIZONTAL;
+                    gridBagConstraintsExtra.gridx = 0;
+                    gridBagConstraintsExtra.gridy = 0;
+
+                    String usersRole = textFieldRole.getText();
+                    if ("Student".equalsIgnoreCase(usersRole)) {
+                        // For Student, add Department, Course, and Year.
+                        JLabel labelDept = new JLabel("Department:");
+                        JComboBox<String> comboBoxDept = new JComboBox<>(departments);
+                        gridBagConstraintsExtra.gridx = 0;
+                        gridBagConstraintsExtra.gridy = 0;
+                        extraPanel.add(labelDept, gridBagConstraintsExtra);
+                        gridBagConstraintsExtra.gridx = 1;
+                        extraPanel.add(comboBoxDept, gridBagConstraintsExtra);
+
+                        JLabel labelCourse = new JLabel("Course:");
+                        String selectedDept = (String) comboBoxDept.getSelectedItem();
+                        String[] courses = MethodsUtil.getCoursesForDepartment(selectedDept);
+                        JComboBox<String> cbCourse = new JComboBox<>(courses);
+                        gridBagConstraintsExtra.gridx = 0;
+                        gridBagConstraintsExtra.gridy = 1;
+                        extraPanel.add(labelCourse, gridBagConstraintsExtra);
+                        gridBagConstraintsExtra.gridx = 1;
+                        extraPanel.add(cbCourse, gridBagConstraintsExtra);
+
+                        // Add listener to update courses when department changes.
+                        comboBoxDept.addActionListener(ec -> {
+                            String dept = (String) comboBoxDept.getSelectedItem();
+                            String[] newCourses = MethodsUtil.getCoursesForDepartment(dept);
+                            cbCourse.setModel(new DefaultComboBoxModel<>(newCourses));
+                        });
+
+                        // Add Year field.
+                        JLabel labelYear = new JLabel("Year:");
+                        String[] years = {"1","2","3","4"};
+                        JComboBox<String> comboBoxYear = new JComboBox<>(years);
+                        String currentYear;
+                        if(selectedUser.getYear() != null){
+                            currentYear = selectedUser.getYear().toString();
+                        } else {
+                            currentYear = "1";
                         }
-                        JPanel editPanel = new JPanel(new GridBagLayout());
-                        GridBagConstraints gridBagConstraints = new GridBagConstraints();
-                        gridBagConstraints.insets = new Insets(5, 5, 5, 5);
-                        gridBagConstraints.fill = GridBagConstraints.HORIZONTAL;
-
-                        JLabel labelEmail = new JLabel("Email:");
-                        JTextField textFieldEmail = new JTextField(selectedUser.getEmail(), 20);
-                        gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 0;
-                        editPanel.add(labelEmail, gridBagConstraints);
-                        gridBagConstraints.gridx = 1;
-                        editPanel.add(textFieldEmail, gridBagConstraints);
-
-
-                        JLabel labelName = new JLabel("Name:");
-                        JTextField textFieldName = new JTextField(selectedUser.getName(), 20);
-                        gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 1;
-                        editPanel.add(labelName, gridBagConstraints);
-                        gridBagConstraints.gridx = 1;
-                        editPanel.add(textFieldName, gridBagConstraints);
-
-                        JLabel labelRole = new JLabel("Role:");
-                        JTextField textFieldRole = new JTextField(selectedUser.getRole(), 20);
-                        gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 2;
-                        editPanel.add(labelRole, gridBagConstraints);
-                        gridBagConstraints.gridx = 1;
-                        editPanel.add(textFieldRole, gridBagConstraints);
-                        textFieldRole.setEditable(false); // Role not editable in update
-
-                        final String PASSWORD_PLACEHOLDER = "********";
-                        JLabel labelPassword = new JLabel("Password:");
-                        JPasswordField passwordField = new JPasswordField( PASSWORD_PLACEHOLDER,20);
-                        passwordField.setEchoChar('*');
-                        // A focus listener so that when the field gains focus, if it contains
-                        // the placeholder it's cleared, and when it loses focus and is empty, the placeholder is restored.
-                        passwordField.addFocusListener(new FocusAdapter() {
-                            @Override
-                            public void focusGained(FocusEvent e) {
-                                String current = new String(passwordField.getPassword());
-                                if (current.equals(PASSWORD_PLACEHOLDER)) {
-                                    passwordField.setText("");
-                                }
-                            }
-
-                            @Override
-                            public void focusLost(FocusEvent e) {
-                                String current = new String(passwordField.getPassword());
-                                if (current.isEmpty()) {
-                                    passwordField.setText(PASSWORD_PLACEHOLDER);
-                                }
-                            }
-                        });
-                        gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 3;
-                        editPanel.add(labelPassword, gridBagConstraints);
-                        gridBagConstraints.gridx = 1;
-                        editPanel.add(passwordField, gridBagConstraints);
-
-                        JPanel extraPanel = new JPanel(new GridBagLayout());
-                        gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 4; gridBagConstraints.gridwidth = 2;
-                        editPanel.add(extraPanel, gridBagConstraints);
-
-                        JButton updateUserSubmitButton = new JButton("Update User");
-                        updateUserSubmitButton.setBackground(Color.LIGHT_GRAY);
-                        updateUserSubmitButton.setForeground(Color.DARK_GRAY);
-                        updateUserButton.setPreferredSize(new Dimension(30, 30));
-                        updateUserButton.setMaximumSize(new Dimension(30, 30));
-                        updateUserSubmitButton.setFocusPainted(false);
-                        gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 5; gridBagConstraints.gridwidth = 2;
-                        editPanel.add(updateUserSubmitButton, gridBagConstraints);
-
-
-                        // Get full list of departments from MethodsUtil.
-                        final String[] departments = controller.MethodsUtil.getDepartments();
-                        // Holder for the Year text field (if needed).
-                        final JTextField[] yearFieldHolder = new JTextField[1];
-
-                        // Runnable to update extraPanel based on selected role.
-                        Runnable updateExtraPanel = () -> {
-                            extraPanel.removeAll();
-                            GridBagConstraints gridBagContraintsExtra = new GridBagConstraints();
-                            gridBagContraintsExtra.insets = new Insets(5, 5, 5, 5);
-                            gridBagContraintsExtra.fill = GridBagConstraints.HORIZONTAL;
-                            gridBagContraintsExtra.gridx = 0; gridBagContraintsExtra.gridy = 0;
-
-                            String usersRole = textFieldRole.getText();
-                            if ("Student".equalsIgnoreCase(usersRole)) {
-                                // For Student, add Department, Course, and Year.
-                                JLabel labelDept = new JLabel("Department:");
-                                JComboBox<String> comboBoxDept = new JComboBox<>(departments);
-                                gridBagContraintsExtra.gridx = 0; gridBagContraintsExtra.gridy = 0;
-                                extraPanel.add(labelDept, gridBagContraintsExtra);
-                                gridBagContraintsExtra.gridx = 1;
-                                extraPanel.add(comboBoxDept, gridBagContraintsExtra);
-
-                                JLabel labelCourse = new JLabel("Course:");
-                                String selectedDept = (String) comboBoxDept.getSelectedItem();
-                                String[] courses = controller.MethodsUtil.getCoursesForDepartment(selectedDept);
-                                JComboBox<String> cbCourse = new JComboBox<>(courses);
-                                gridBagContraintsExtra.gridx = 0; gridBagContraintsExtra.gridy = 1;
-                                extraPanel.add(labelCourse, gridBagContraintsExtra);
-                                gridBagContraintsExtra.gridx = 1;
-                                extraPanel.add(cbCourse, gridBagContraintsExtra);
-
-                                // Add listener to update courses when department changes.
-                                comboBoxDept.addActionListener(ec -> {
-                                    String dept = (String) comboBoxDept.getSelectedItem();
-                                    String[] newCourses = controller.MethodsUtil.getCoursesForDepartment(dept);
-                                    cbCourse.setModel(new DefaultComboBoxModel<>(newCourses));
-                                });
-
-                                // Add Year field.
-                                JLabel labelYear = new JLabel("Year:");
-                                String[] years = {"1","2","3","4"};
-                                JComboBox<String> comboBoxYear = new JComboBox<>(years);
-                                String currentYear;
-                                if(selectedUser.getYear() != null){
-                                    currentYear = selectedUser.getYear().toString();
-                                } else {
-                                    currentYear = "1";
-                                }
-                                comboBoxYear.setSelectedItem(currentYear);
-                                gridBagContraintsExtra.gridx = 0; gridBagContraintsExtra.gridy = 2;
-                                extraPanel.add(labelYear, gridBagContraintsExtra);
-                                gridBagContraintsExtra.gridx = 1;
-                                extraPanel.add(comboBoxYear, gridBagContraintsExtra);
-                            } else if ("Lecturer".equalsIgnoreCase(usersRole)) {
-                                // For Lecturer, add only Department.
-                                JLabel labelDept = new JLabel("Department:");
-                                JComboBox<String> comboBoxDept = new JComboBox<>(departments);
-                                gridBagContraintsExtra.gridx = 0; gridBagContraintsExtra.gridy = 0;
-                                extraPanel.add(labelDept, gridBagContraintsExtra);
-                                gridBagContraintsExtra.gridx = 1;
-                                extraPanel.add(comboBoxDept, gridBagContraintsExtra);
-                            }
-                            extraPanel.revalidate();
-                            extraPanel.repaint();
-                        };
-
-                        // Initial update.
-                        updateExtraPanel.run();
-
-                        updateUserSubmitButton.addActionListener(ev -> {
-
-                            try{
-                                String email = InputValidator.validateEmail(textFieldEmail.getText(), textFieldRole.getText());
-                                String name = InputValidator.validateName(textFieldName.getText());
-                                String updatedPassword = new String(passwordField.getPassword()).trim();
-                                if (!updatedPassword.equals(PASSWORD_PLACEHOLDER) && !updatedPassword.isEmpty()) {
-                                    selectedUser.setPassword(controller.PasswordUtils.hashPassword(updatedPassword));
-                                }
-
-
-                                selectedUser.setEmail(email);
-                                selectedUser.setName(name);
-
-                                if("Student".equalsIgnoreCase(selectedUser.getRole())) {
-                                    Component[] components = extraPanel.getComponents();
-                                    String department = "";
-                                    String course = "";
-                                    String yearString = "";
-                                    int comboCount = 0;
-                                    for(Component component : components) {
-                                        if(component instanceof JComboBox) {
-                                            JComboBox<String> comboBox = (JComboBox<String>) component;
-                                            if(comboCount == 0){
-                                                department = (String) comboBox.getSelectedItem();
-                                            } else if (comboCount == 1){
-                                                course = (String) comboBox.getSelectedItem();
-                                            } else if (comboCount == 2){
-                                                yearString = (String) comboBox.getSelectedItem();
-                                            }
-                                            comboCount++;
-                                        }
-                                    }
-                                    selectedUser.setDepartment(department);
-                                    selectedUser.setCourse(course);
-                                    try {
-                                        int year = Integer.parseInt(yearString);
-                                        selectedUser.setYear(year);
-                                    } catch (NumberFormatException numberException) {
-                                        JOptionPane.showMessageDialog(this, "Invalid year selected", "Error", JOptionPane.ERROR_MESSAGE);
-                                        return;
-                                    }
-                                    }else if("Lecturer".equalsIgnoreCase(selectedUser.getRole())){
-                                        for(Component component : extraPanel.getComponents()) {
-                                            if(component instanceof JComboBox) {
-                                                JComboBox<String> comboBox = (JComboBox<String>) component;
-                                                selectedUser.setDepartment((String) comboBox.getSelectedItem());
-                                            }
-                                        }
-                                    }
-
-                                boolean success = userController.updateUser(selectedUser, adminId);
-                                if(success)
-                                    JOptionPane.showMessageDialog(this, "User updated successfully.");
-                                else
-                                    JOptionPane.showMessageDialog(this, "Failed to update user.");
-                            }catch(exception.InvalidInputException ex){
-                                JOptionPane.showMessageDialog(this, ex.getMessage(), "Validation Error", JOptionPane.ERROR_MESSAGE);
-                            }
-
-                        });
-
-                        contentPanel.removeAll();
-                        contentPanel.add(editPanel, BorderLayout.CENTER);
-                        contentPanel.revalidate();
-                        contentPanel.repaint();
-                    } catch (DatabaseOperationException ex) {
-                        JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
+                        comboBoxYear.setSelectedItem(currentYear);
+                        gridBagConstraintsExtra.gridx = 0;
+                        gridBagConstraintsExtra.gridy = 2;
+                        extraPanel.add(labelYear, gridBagConstraintsExtra);
+                        gridBagConstraintsExtra.gridx = 1;
+                        extraPanel.add(comboBoxYear, gridBagConstraintsExtra);
+                    } else if ("Lecturer".equalsIgnoreCase(usersRole)) {
+                        // For Lecturer, add only Department.
+                        JLabel labelDept = new JLabel("Department:");
+                        JComboBox<String> comboBoxDept = new JComboBox<>(departments);
+                        gridBagConstraintsExtra.gridx = 0;
+                        gridBagConstraintsExtra.gridy = 0;
+                        extraPanel.add(labelDept, gridBagConstraintsExtra);
+                        gridBagConstraintsExtra.gridx = 1;
+                        extraPanel.add(comboBoxDept, gridBagConstraintsExtra);
                     }
+                    extraPanel.revalidate();
+                    extraPanel.repaint();
+                };
+
+                // Initial update.
+                updateExtraPanel.run();
+
+                updateUserSubmitButton.addActionListener(ev -> {
+
+                    try{
+                        String email = InputValidator.validateEmail(textFieldEmail.getText(), textFieldRole.getText());
+                        String name = InputValidator.validateName(textFieldName.getText());
+                        String updatedPassword = new String(passwordField.getPassword()).trim();
+                        if (!updatedPassword.equals(PASSWORD_PLACEHOLDER) && !updatedPassword.isEmpty()) {
+                            selectedUser.setPassword(PasswordUtils.hashPassword(updatedPassword));
+                        }
+
+
+                        selectedUser.setEmail(email);
+                        selectedUser.setName(name);
+
+                        if("Student".equalsIgnoreCase(selectedUser.getRole())) {
+                            Component[] components = extraPanel.getComponents();
+                            String department = "";
+                            String course = "";
+                            String yearString = "";
+                            int comboCount = 0;
+                            for(Component component : components) {
+                                if(component instanceof JComboBox) {
+                                    JComboBox<String> comboBox = (JComboBox<String>) component;
+                                    if(comboCount == 0){
+                                        department = (String) comboBox.getSelectedItem();
+                                    } else if (comboCount == 1){
+                                        course = (String) comboBox.getSelectedItem();
+                                    } else if (comboCount == 2){
+                                        yearString = (String) comboBox.getSelectedItem();
+                                    }
+                                    comboCount++;
+                                }
+                            }
+                            selectedUser.setDepartment(department);
+                            selectedUser.setCourse(course);
+                            try {
+                                int year = Integer.parseInt(yearString);
+                                selectedUser.setYear(year);
+                            } catch (NumberFormatException numberException) {
+                                JOptionPane.showMessageDialog(this, "Invalid year selected", "Error", JOptionPane.ERROR_MESSAGE);
+                                return;
+                            }
+                            }else if("Lecturer".equalsIgnoreCase(selectedUser.getRole())){
+                                for(Component component : extraPanel.getComponents()) {
+                                    if(component instanceof JComboBox) {
+                                        JComboBox<String> comboBox = (JComboBox<String>) component;
+                                        selectedUser.setDepartment((String) comboBox.getSelectedItem());
+                                    }
+                                }
+                            }
+
+                        boolean success = userController.updateUser(selectedUser, adminId);
+                        if(success)
+                            JOptionPane.showMessageDialog(this, "User updated successfully.");
+                        else
+                            JOptionPane.showMessageDialog(this, "Failed to update user.");
+                    }catch(exception.InvalidInputException ex){
+                        JOptionPane.showMessageDialog(this, ex.getMessage(), "Validation Error", JOptionPane.ERROR_MESSAGE);
+                    }
+
                 });
+
                 contentPanel.removeAll();
-                contentPanel.add(updatePanel, BorderLayout.CENTER);
+                contentPanel.add(editPanel, BorderLayout.CENTER);
                 contentPanel.revalidate();
                 contentPanel.repaint();
-            } catch (DatabaseOperationException ex) {
-                JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
-            }
+            });
+            contentPanel.removeAll();
+            contentPanel.add(updatePanel, BorderLayout.CENTER);
+            contentPanel.revalidate();
+            contentPanel.repaint();
         }
 
-        private void loadDeleteUser() {
+        /**
+         * Loads the "Delete User" panel.
+         *
+         * @throws DatabaseOperationException if a database error occurs.
+         */
+        private void loadDeleteUser() throws DatabaseOperationException {
             final UserController userController = new UserController();
-            try {
-                final List<User> users = userController.getAllUsers("Admin");
-                JPanel deletePanel = new JPanel(new BorderLayout());
-                String[] columnNames = {"User ID", "Email", "Name", "Role"};
-                final DefaultTableModel model = new DefaultTableModel(columnNames, 0);
-                for (User user : users) {
-                    Object[] row = { user.getUserId(), user.getEmail(), user.getName(), user.getRole() };
-                    model.addRow(row);
+            final List<User> users = userController.getAllUsers("Admin");
+            JPanel deletePanel = new JPanel(new BorderLayout());
+            String[] columnNames = {"User ID", "Email", "Name", "Role"};
+            final DefaultTableModel model = new DefaultTableModel(columnNames, 0){
+                @Override
+                public boolean isCellEditable(int row, int column){
+                    return false;
                 }
-                final JTable table = new JTable(model);
-
-                // Center text in some columns
-                DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
-                centerRenderer.setHorizontalAlignment(JLabel.CENTER);
-                table.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
-
-                JScrollPane scrollPane = new JScrollPane(table);
-                deletePanel.add(scrollPane, BorderLayout.CENTER);
-                JButton deleteUserButton = new JButton("Delete Selected User");
-                deleteUserButton.setBackground(Color.LIGHT_GRAY);
-                deleteUserButton.setForeground(Color.DARK_GRAY);
-                deleteUserButton.setPreferredSize(new Dimension(30, 30));
-                deleteUserButton.setMaximumSize(new Dimension(30, 30));
-                deleteUserButton.setFocusPainted(false);
-                deletePanel.add(deleteUserButton, BorderLayout.SOUTH);
-                deleteUserButton.addActionListener(e -> {
-                    int selectedRow = table.getSelectedRow();
-                    if(selectedRow < 0){
-                        JOptionPane.showMessageDialog(this, "Please select a user to delete.");
-                        return;
-                    }
-                    String userId = (String) model.getValueAt(selectedRow, 0);
-                    int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete user " + userId + "?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
-                    if(confirm == JOptionPane.YES_OPTION){
-                        boolean success = userController.deleteUser(userId, adminId);
-                        if(success){
-                            JOptionPane.showMessageDialog(this, "User deleted successfully.");
-                            model.removeRow(selectedRow);
-                        } else {
-                            JOptionPane.showMessageDialog(this, "Failed to delete user.");
-                        }
-                    }
-                });
-                contentPanel.removeAll();
-                contentPanel.add(deletePanel, BorderLayout.CENTER);
-                contentPanel.revalidate();
-                contentPanel.repaint();
-            } catch (DatabaseOperationException ex) {
-                JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
+            };
+            for (User user : users) {
+                Object[] row = { user.getUserId(), user.getEmail(), user.getName(), user.getRole() };
+                model.addRow(row);
             }
+            final JTable table = new JTable(model);
+
+            // Center text in some columns
+            DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+            centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+            table.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
+
+            JScrollPane scrollPane = new JScrollPane(table);
+            deletePanel.add(scrollPane, BorderLayout.CENTER);
+            JButton deleteUserButton = new JButton("Delete Selected User");
+            deleteUserButton.setBackground(Color.LIGHT_GRAY);
+            deleteUserButton.setForeground(Color.DARK_GRAY);
+            deleteUserButton.setPreferredSize(new Dimension(30, 30));
+            deleteUserButton.setMaximumSize(new Dimension(30, 30));
+            deleteUserButton.setFocusPainted(false);
+            deletePanel.add(deleteUserButton, BorderLayout.SOUTH);
+            deleteUserButton.addActionListener(e -> {
+                int selectedRow = table.getSelectedRow();
+                if(selectedRow < 0){
+                    JOptionPane.showMessageDialog(this, "Please select a user to delete.");
+                    return;
+                }
+                String userId = (String) model.getValueAt(selectedRow, 0);
+                int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete user " + userId + "?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
+                if(confirm == JOptionPane.YES_OPTION){
+                    boolean success = userController.deleteUser(userId, adminId);
+                    if(success){
+                        JOptionPane.showMessageDialog(this, "User deleted successfully.");
+                        model.removeRow(selectedRow);
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Failed to delete user.");
+                    }
+                }
+            });
+            contentPanel.removeAll();
+            contentPanel.add(deletePanel, BorderLayout.CENTER);
+            contentPanel.revalidate();
+            contentPanel.repaint();
         }
     }
 
-    // --------------------------
-    // Equipment Management Panel
-    // --------------------------
-    class EquipmentManagementPanel extends JPanel {
+    /**
+     * EquipmentManagementPanel provides an interface for managing equipment records,
+     * including viewing, adding, updating, and deleting equipment.
+     */
+    class EquipmentManagementPanel extends JPanel implements Refreshable {
         private String adminId;
         private JPanel contentPanel;
 
+        /**
+         * Constructs an EquipmentManagementPanel for the given admin.
+         *
+         * @param adminId the ID of the admin.
+         */
         public EquipmentManagementPanel(String adminId) {
             this.adminId = adminId;
 
@@ -1000,11 +1146,30 @@ public class AdminFrame extends JFrame {
             });
         }
 
+        /**
+         * Refreshes the equipment management panel by reloading all equipment.
+         *
+         * @throws DatabaseOperationException if a database error occurs.
+         */
+        public void refresh() throws DatabaseOperationException {
+            loadViewAllEquipment();
+        }
+
+        /**
+         * Loads all equipment records into a table view.
+         *
+         * @throws DatabaseOperationException if a database error occurs.
+         */
         private void loadViewAllEquipment() throws DatabaseOperationException {
             EquipmentController equipmentController = new EquipmentController();
             List<Equipment> equipments = equipmentController.getAllEquipment("Admin");
-            String[] colNames = {"Equipment ID", "Name", "Type", "Description", "Status", "State"};
-            DefaultTableModel model = new DefaultTableModel(colNames, 0);
+            String[] columnNames = {"Equipment ID", "Name", "Type", "Description", "Status", "State"};
+            DefaultTableModel model = new DefaultTableModel(columnNames, 0){
+                @Override
+                public boolean isCellEditable(int row, int column){
+                    return false;
+                }
+            };
             for (Equipment equipment : equipments) {
                 Object[] row = { equipment.getEquipmentId(), equipment.getName(), equipment.getType(), equipment.getDescription(), equipment.getStatus(), equipment.getState() };
                 model.addRow(row);
@@ -1023,6 +1188,11 @@ public class AdminFrame extends JFrame {
             contentPanel.repaint();
         }
 
+        /**
+         * Loads equipment records filtered by type.
+         *
+         * @throws DatabaseOperationException if a database error occurs.
+         */
         private void loadViewEquipmentByType() throws DatabaseOperationException {
             String[] types = {"Audio Recorder", "Camera", "Drone", "Laptop", "Lighting", "Projector", "VR Headset", "Other"};
             String type = (String) JOptionPane.showInputDialog(this, "Select Equipment Type:", "Equipment Type", JOptionPane.QUESTION_MESSAGE, null, types, types[0]);
@@ -1030,7 +1200,12 @@ public class AdminFrame extends JFrame {
             EquipmentController equipmentController = new EquipmentController();
             List<Equipment> equipments = equipmentController.getEquipmentByType(type, loggedInUser.getRole());
             String[] columnNames = {"Equipment ID", "Name", "Type", "Description", "Status", "State"};
-            DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+            DefaultTableModel model = new DefaultTableModel(columnNames, 0){
+                @Override
+                public boolean isCellEditable(int row, int column){
+                    return false;
+                }
+            };
             for (Equipment equipment : equipments) {
                 Object[] row = { equipment.getEquipmentId(), equipment.getName(), equipment.getType(), equipment.getDescription(), equipment.getStatus(), equipment.getState() };
                 model.addRow(row);
@@ -1049,6 +1224,10 @@ public class AdminFrame extends JFrame {
             contentPanel.repaint();
         }
 
+        /**
+         * Loads the "Add Equipment" form panel.
+         * (Implementation should follow similar patterns as in UserManagementPanel.)
+         */
         private void loadAddEquipment() {
             JPanel addPanel = new JPanel(new GridBagLayout());
             GridBagConstraints gridBagConstraints = new GridBagConstraints();
@@ -1071,23 +1250,29 @@ public class AdminFrame extends JFrame {
             addEquipmentButton.setForeground(Color.DARK_GRAY);
             addEquipmentButton.setPreferredSize(new Dimension(30, 30));
             addEquipmentButton.setMaximumSize(new Dimension(30, 30));
-            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 0;
+            gridBagConstraints.gridx = 0;
+            gridBagConstraints.gridy = 0;
             addPanel.add(labelName, gridBagConstraints);
             gridBagConstraints.gridx = 1;
             addPanel.add(textFieldName, gridBagConstraints);
-            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 1;
+            gridBagConstraints.gridx = 0;
+            gridBagConstraints.gridy = 1;
             addPanel.add(labelType, gridBagConstraints);
             gridBagConstraints.gridx = 1;
             addPanel.add(comboBoxType, gridBagConstraints);
-            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 2;
+            gridBagConstraints.gridx = 0;
+            gridBagConstraints.gridy = 2;
             addPanel.add(labelDescription, gridBagConstraints);
             gridBagConstraints.gridx = 1;
             addPanel.add(textFieldDescription, gridBagConstraints);
-            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 3;
+            gridBagConstraints.gridx = 0;
+            gridBagConstraints.gridy = 3;
             addPanel.add(labelState, gridBagConstraints);
             gridBagConstraints.gridx = 1;
             addPanel.add(comboBoxState, gridBagConstraints);
-            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 4; gridBagConstraints.gridwidth = 2;
+            gridBagConstraints.gridx = 0;
+            gridBagConstraints.gridy = 4;
+            gridBagConstraints.gridwidth = 2;
             addPanel.add(addEquipmentButton, gridBagConstraints);
 
             addEquipmentButton.addActionListener(e -> {
@@ -1124,12 +1309,22 @@ public class AdminFrame extends JFrame {
             contentPanel.repaint();
         }
 
+        /**
+         * Loads the "Update Equipment" form panel.
+         *
+         * @throws DatabaseOperationException if a database error occurs.
+         */
         private void loadUpdateEquipment() throws DatabaseOperationException {
             EquipmentController equipmentController = new EquipmentController();
             List<Equipment> equipments = equipmentController.getAllEquipment("Admin");
             JPanel updatePanel = new JPanel(new BorderLayout());
             String[] columnNames = {"Equipment ID", "Name", "Type", "Description", "Status", "State"};
-            final DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+            final DefaultTableModel model = new DefaultTableModel(columnNames, 0){
+                @Override
+                public boolean isCellEditable(int row, int column){
+                    return false;
+                }
+            };
             for (Equipment equipment : equipments) {
                 if ("Available".equalsIgnoreCase(equipment.getStatus())) {  // Only include available equipment
                     Object[] row = { equipment.getEquipmentId(), equipment.getName(), equipment.getType(),
@@ -1188,23 +1383,29 @@ public class AdminFrame extends JFrame {
                 updateEquipmentSubmitButton.setForeground(Color.DARK_GRAY);
                 updateEquipmentSubmitButton.setPreferredSize(new Dimension(30, 30));
                 updateEquipmentSubmitButton.setMaximumSize(new Dimension(30, 30));
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 0;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 0;
                 editPanel.add(labelName, gridBagConstraints);
                 gridBagConstraints.gridx = 1;
                 editPanel.add(textFieldName, gridBagConstraints);
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 1;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 1;
                 editPanel.add(labelType, gridBagConstraints);
                 gridBagConstraints.gridx = 1;
                 editPanel.add(comboBoxType, gridBagConstraints);
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 2;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 2;
                 editPanel.add(labelDescription, gridBagConstraints);
                 gridBagConstraints.gridx = 1;
                 editPanel.add(textFieldDescription, gridBagConstraints);
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 3;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 3;
                 editPanel.add(labelState, gridBagConstraints);
                 gridBagConstraints.gridx = 1;
                 editPanel.add(comboBoxState, gridBagConstraints);
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 4; gridBagConstraints.gridwidth = 2;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 4;
+                gridBagConstraints.gridwidth = 2;
                 editPanel.add(updateEquipmentSubmitButton, gridBagConstraints);
 
                 updateEquipmentSubmitButton.addActionListener(ev -> {
@@ -1241,12 +1442,22 @@ public class AdminFrame extends JFrame {
             contentPanel.repaint();
         }
 
+        /**
+         * Loads the "Delete Equipment" panel.
+         *
+         * @throws DatabaseOperationException if a database error occurs.
+         */
         private void loadDeleteEquipment() throws DatabaseOperationException {
             EquipmentController equipmentController = new EquipmentController();
             List<Equipment> equipments = equipmentController.getAllEquipment("Admin");
             JPanel deletePanel = new JPanel(new BorderLayout());
             String[] columnNames = {"Equipment ID", "Name", "Type", "Description", "Status", "State"};
-            final DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+            final DefaultTableModel model = new DefaultTableModel(columnNames, 0){
+                @Override
+                public boolean isCellEditable(int row, int column){
+                    return false;
+                }
+            };
             for (Equipment equipment : equipments) {
                 Object[] row = { equipment.getEquipmentId(), equipment.getName(), equipment.getType(), equipment.getDescription(), equipment.getStatus(), equipment.getState() };
                 model.addRow(row);
@@ -1292,13 +1503,19 @@ public class AdminFrame extends JFrame {
         }
     }
 
-    // --------------------------
-    // Reservations Management Panel
-    // --------------------------
-    class ReservationsManagementPanel extends JPanel {
+    /**
+     * ReservationsManagementPanel provides an interface for managing reservations.
+     * It allows the admin to approve or reject reservations as well as process equipment check-out and check-in.
+     */
+    class ReservationsManagementPanel extends JPanel implements Refreshable {
         private String adminId;
         private JPanel contentPanel;
 
+        /**
+         * Constructs a ReservationsManagementPanel for the given admin.
+         *
+         * @param adminId the ID of the admin.
+         */
         public ReservationsManagementPanel(String adminId) {
             this.adminId = adminId;
 
@@ -1344,12 +1561,31 @@ public class AdminFrame extends JFrame {
             buttonCheckIn.addActionListener(e -> loadCheckIn());
         }
 
+        /**
+         * Refreshes the reservations management panel by reloading the approval tab.
+         *
+         * @throws DatabaseOperationException if a database error occurs.
+         */
+        public void refresh() throws DatabaseOperationException {
+            loadApproval();
+        }
+
+        /**
+         * Loads the reservation approval panel where the admin can update reservation statuses.
+         *
+         * @throws DatabaseOperationException if a database error occurs.
+         */
         private void loadApproval() throws DatabaseOperationException {
             ReservationController reservationController = new ReservationController();
             List<Reservation> reservations = reservationController.getAllReservations(adminId);
             JPanel updatePanel = new JPanel(new BorderLayout());
             String[] columnNames = {"Reservation ID", "User", "Equipment", "Reservation Date", "Return Date", "Status"};
-            DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+            DefaultTableModel model = new DefaultTableModel(columnNames, 0){
+                @Override
+                public boolean isCellEditable(int row, int column){
+                    return false;
+                }
+            };
             for (Reservation reservation : reservations) {
                 Object[] row = { reservation.getReservationId(), reservation.getUserId(), reservation.getEquipmentId(), reservation.getReservationDate(), reservation.getReturnDate(), reservation.getStatus() };
                 model.addRow(row);
@@ -1416,31 +1652,39 @@ public class AdminFrame extends JFrame {
                 updateRequestSubmitButton.setForeground(Color.DARK_GRAY);
                 updateRequestSubmitButton.setPreferredSize(new Dimension(30, 30));
                 updateRequestSubmitButton.setMaximumSize(new Dimension(30, 30));
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 0;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 0;
                 editPanel.add(labelReservationId, gridBagConstraints);
                 gridBagConstraints.gridx = 1;
                 editPanel.add(textFieldReservationId, gridBagConstraints);
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 1;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 1;
                 editPanel.add(labelUserName, gridBagConstraints);
                 gridBagConstraints.gridx = 1;
                 editPanel.add(textFieldUserName, gridBagConstraints);
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 2;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 2;
                 editPanel.add(labelEquipmentName, gridBagConstraints);
                 gridBagConstraints.gridx = 1;
                 editPanel.add(textFieldEquipmentName, gridBagConstraints);
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 3;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 3;
                 editPanel.add(labelReservationDate, gridBagConstraints);
                 gridBagConstraints.gridx = 1;
                 editPanel.add(textFieldReservationDate, gridBagConstraints);
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 4;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 4;
                 editPanel.add(labelReturnDate, gridBagConstraints);
                 gridBagConstraints.gridx = 1;
                 editPanel.add(textFieldReturnDate, gridBagConstraints);
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 5;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 5;
                 editPanel.add(labelStatus, gridBagConstraints);
                 gridBagConstraints.gridx = 1;
                 editPanel.add(comboBoxStatus, gridBagConstraints);
-                gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 6; gridBagConstraints.gridwidth = 2;
+                gridBagConstraints.gridx = 0;
+                gridBagConstraints.gridy = 6;
+                gridBagConstraints.gridwidth = 2;
                 editPanel.add(updateRequestSubmitButton, gridBagConstraints);
 
                 updateRequestSubmitButton.addActionListener(ev ->{
@@ -1467,6 +1711,9 @@ public class AdminFrame extends JFrame {
             contentPanel.repaint();
         }
 
+        /**
+         * Loads the check-out panel for processing equipment check-outs.
+         */
         private void loadCheckOut() {
             // Retrieve pending checkouts from the back end.
             CheckoutController checkoutController = new CheckoutController();
@@ -1480,7 +1727,12 @@ public class AdminFrame extends JFrame {
             JPanel panel = new JPanel(new BorderLayout());
             // Define columns corresponding to the expected string format.
             String[] columnNames = {"Reservation ID", "Requester's Name", "Requested Equipment", "Reservation Date"};
-            DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+            DefaultTableModel model = new DefaultTableModel(columnNames, 0){
+                @Override
+                public boolean isCellEditable(int row, int column){
+                    return false;
+                }
+            };
 
             // Split each string by " | " and add as a row.
             for (String detail : pendingCheckouts) {
@@ -1497,7 +1749,7 @@ public class AdminFrame extends JFrame {
             JScrollPane scrollPane = new JScrollPane(table);
             panel.add(scrollPane, BorderLayout.CENTER);
 
-            // Create a Check Out button.
+            // Create a Check-Out button.
             JButton checkOutButton = new JButton("Check Out Selected");
             checkOutButton.setBackground(Color.LIGHT_GRAY);
             checkOutButton.setForeground(Color.DARK_GRAY);
@@ -1536,8 +1788,9 @@ public class AdminFrame extends JFrame {
             contentPanel.repaint();
         }
 
-
-
+        /**
+         * Loads the check-in panel for processing equipment check-ins.
+         */
         private void loadCheckIn() {
             // Retrieve checked-out equipment from the back end.
             CheckoutController checkoutController = new CheckoutController();
@@ -1550,7 +1803,12 @@ public class AdminFrame extends JFrame {
             // Create a panel with a table to display checked-out equipment.
             JPanel panel = new JPanel(new BorderLayout());
             String[] columnNames = {"Reservation ID", "Requester's Name", "Requested Equipment", "Checked Out Date"};
-            DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+            DefaultTableModel model = new DefaultTableModel(columnNames, 0){
+                @Override
+                public boolean isCellEditable(int row, int column){
+                    return false;
+                }
+            };
 
             for (String detail : checkedOutList) {
                 String[] parts = detail.split(" \\| ");
