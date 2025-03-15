@@ -52,11 +52,11 @@ import org.jfree.data.category.DefaultCategoryDataset;
 import org.jfree.data.general.DefaultPieDataset;
 
 
-public class AdminFrame extends JFrame {
+public class MediaStaffFrame extends JFrame {
     private User loggedInUser;
     private JTabbedPane tabbedPane;
 
-    public AdminFrame(User user) {
+    public MediaStaffFrame(User user) {
         this.loggedInUser = user;
         setTitle("Media Equipment Rental System - Admin Menu - " + user.getName());
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -346,18 +346,15 @@ public class AdminFrame extends JFrame {
 
 
             JButton buttonViewAllUsers = createMenuItem("View All Users");
-            JButton buttonAddUser = createMenuItem("Add New User");
-            JButton buttonUpdateUser = createMenuItem("Update User");
-            JButton buttonDeleteUser = createMenuItem("Delete User");
+            JButton buttonViewLecturers = createMenuItem("View Lecturers");
+            JButton buttonViewStudents = createMenuItem("View Students");
 
             sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
             sidebar.add(buttonViewAllUsers);
             sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
-            sidebar.add(buttonAddUser);
+            sidebar.add(buttonViewLecturers);
             sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
-            sidebar.add(buttonUpdateUser);
-            sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
-            sidebar.add(buttonDeleteUser);
+            sidebar.add(buttonViewStudents);
 
             // Create content panel (initially with a placeholder)
             contentPanel = new JPanel(new BorderLayout());
@@ -378,9 +375,8 @@ public class AdminFrame extends JFrame {
 
             // Action listeners
             buttonViewAllUsers.addActionListener(e -> loadViewAllUsers());
-            buttonAddUser.addActionListener(e -> loadAddUser());
-            buttonUpdateUser.addActionListener(e -> loadUpdateUser());
-            buttonDeleteUser.addActionListener(e -> loadDeleteUser());
+            buttonViewLecturers.addActionListener(e -> loadViewLecturers());
+            buttonViewStudents.addActionListener(e -> loadViewStudents());
         }
 
         private void loadViewAllUsers() {
@@ -390,8 +386,10 @@ public class AdminFrame extends JFrame {
                 String[] columnNames = {"User ID", "Email", "Name", "Role"};
                 DefaultTableModel model = new DefaultTableModel(columnNames, 0);
                 for (User user : users) {
-                    Object[] row = { user.getUserId(), user.getEmail(), user.getName(), user.getRole() };
-                    model.addRow(row);
+                    if(!user.getRole().equals("Admin")) {
+                        Object[] row = { user.getUserId(), user.getEmail(), user.getName(), user.getRole() };
+                        model.addRow(row);
+                    }
                 }
                 JTable table = new JTable(model);
 
@@ -409,460 +407,28 @@ public class AdminFrame extends JFrame {
             }
         }
 
-        private void loadAddUser() {
-            // Main panel for the Add User form.
-            JPanel addPanel = new JPanel(new GridBagLayout());
-            GridBagConstraints gbc = new GridBagConstraints();
-            gbc.insets = new Insets(5, 5, 5, 5);
-            gbc.fill = GridBagConstraints.HORIZONTAL;
-
-            // Row 0: Role selection
-            JLabel labelRole = new JLabel("Role:");
-            String[] roles = {"Student", "Lecturer", "Admin", "MediaStaff"};
-            JComboBox<String> comboBoxRole = new JComboBox<>(roles);
-            gbc.gridx = 0; gbc.gridy = 0;
-            addPanel.add(labelRole, gbc);
-            gbc.gridx = 1;
-            addPanel.add(comboBoxRole, gbc);
-
-            // Row 1: Email
-            JLabel labelEmail = new JLabel("Email:");
-            JTextField textFieldEmail = new JTextField(20);
-            gbc.gridx = 0; gbc.gridy = 1;
-            addPanel.add(labelEmail, gbc);
-            gbc.gridx = 1;
-            addPanel.add(textFieldEmail, gbc);
-
-            // Row 2: Name
-            JLabel labelName = new JLabel("Name:");
-            JTextField textFieldName = new JTextField(20);
-            gbc.gridx = 0; gbc.gridy = 2;
-            addPanel.add(labelName, gbc);
-            gbc.gridx = 1;
-            addPanel.add(textFieldName, gbc);
-
-            // Row 3: Password
-            JLabel labelPassword = new JLabel("Password:");
-            JPasswordField pfPassword = new JPasswordField(20);
-            gbc.gridx = 0; gbc.gridy = 3;
-            addPanel.add(labelPassword, gbc);
-            gbc.gridx = 1;
-            addPanel.add(pfPassword, gbc);
-
-            // Row 4: Extra panel for additional fields (Department, Course, and Year for Student)
-            JPanel extraPanel = new JPanel(new GridBagLayout());
-            gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 2;
-            addPanel.add(extraPanel, gbc);
-
-            // Get full list of departments from MethodsUtil.
-            final String[] departments = controller.MethodsUtil.getDepartments();
-            // Holder for the Year text field (if needed).
-            final JTextField[] yearFieldHolder = new JTextField[1];
-
-            // Runnable to update extraPanel based on selected role.
-            Runnable updateExtraPanel = () -> {
-                extraPanel.removeAll();
-                GridBagConstraints gbcExtra = new GridBagConstraints();
-                gbcExtra.insets = new Insets(5, 5, 5, 5);
-                gbcExtra.fill = GridBagConstraints.HORIZONTAL;
-                gbcExtra.gridx = 0;
-                gbcExtra.gridy = 0;
-                String selectedRole = (String) comboBoxRole.getSelectedItem();
-                if ("Student".equalsIgnoreCase(selectedRole)) {
-                    // For Student, add Department, Course, and Year.
-                    JLabel labelDept = new JLabel("Department:");
-                    JComboBox<String> comboBoxDept = new JComboBox<>(departments);
-                    gbcExtra.gridx = 0; gbcExtra.gridy = 0;
-                    extraPanel.add(labelDept, gbcExtra);
-                    gbcExtra.gridx = 1;
-                    extraPanel.add(comboBoxDept, gbcExtra);
-
-                    JLabel labelCourse = new JLabel("Course:");
-                    String selectedDept = (String) comboBoxDept.getSelectedItem();
-                    String[] courses = controller.MethodsUtil.getCoursesForDepartment(selectedDept);
-                    JComboBox<String> cbCourse = new JComboBox<>(courses);
-                    gbcExtra.gridx = 0; gbcExtra.gridy = 1;
-                    extraPanel.add(labelCourse, gbcExtra);
-                    gbcExtra.gridx = 1;
-                    extraPanel.add(cbCourse, gbcExtra);
-
-                    // Add listener to update courses when department changes.
-                    comboBoxDept.addActionListener(e -> {
-                        String dept = (String) comboBoxDept.getSelectedItem();
-                        String[] newCourses = controller.MethodsUtil.getCoursesForDepartment(dept);
-                        cbCourse.setModel(new DefaultComboBoxModel<>(newCourses));
-                    });
-
-                    // Add Year field.
-                    JLabel labelYear = new JLabel("Year:");
-                    JTextField textFieldYear = new JTextField(5);
-                    yearFieldHolder[0] = textFieldYear;
-                    gbcExtra.gridx = 0; gbcExtra.gridy = 2;
-                    extraPanel.add(labelYear, gbcExtra);
-                    gbcExtra.gridx = 1;
-                    extraPanel.add(textFieldYear, gbcExtra);
-                } else if ("Lecturer".equalsIgnoreCase(selectedRole)) {
-                    // For Lecturer, add only Department.
-                    JLabel labelDept = new JLabel("Department:");
-                    JComboBox<String> comboBoxDept = new JComboBox<>(departments);
-                    gbcExtra.gridx = 0; gbcExtra.gridy = 0;
-                    extraPanel.add(labelDept, gbcExtra);
-                    gbcExtra.gridx = 1;
-                    extraPanel.add(comboBoxDept, gbcExtra);
-                }
-                extraPanel.revalidate();
-                extraPanel.repaint();
-            };
-
-            // Initial update.
-            updateExtraPanel.run();
-            comboBoxRole.addActionListener(e -> updateExtraPanel.run());
-
-            // Row 5: Submit button.
-            JButton addUserButton = new JButton("Add User");
-            addUserButton.setBackground(Color.LIGHT_GRAY);
-            addUserButton.setForeground(Color.DARK_GRAY);
-            addUserButton.setPreferredSize(new Dimension(30, 30));
-            addUserButton.setMaximumSize(new Dimension(30, 30));
-            addUserButton.setFocusPainted(false);
-            gbc.gridx = 0; gbc.gridy = 5; gbc.gridwidth = 2;
-            addPanel.add(addUserButton, gbc);
-
-            addUserButton.addActionListener(e -> {
-                try {
-                    // Validate email and name using the input validator.
-                    String email = InputValidator.validateEmail(textFieldEmail.getText(), (String) comboBoxRole.getSelectedItem());
-                    String name = InputValidator.validateName(textFieldName.getText());
-                    String role = (String) comboBoxRole.getSelectedItem();
-                    String password = new String(pfPassword.getPassword()).trim();
-                    if (password.isEmpty()) {
-                        JOptionPane.showMessageDialog(this, "Password must be filled.", "Error", JOptionPane.ERROR_MESSAGE);
-                        return;
-                    }
-                    // Create the new user.
-                    User newUser = new User();
-                    newUser.setEmail(email);
-                    newUser.setName(name);
-                    newUser.setRole(role);
-                    newUser.setPassword(controller.PasswordUtils.hashPassword(password));
-
-                    // Process extra fields for Student and Lecturer.
-                    if ("Student".equalsIgnoreCase(role)) {
-                        // Expect two JComboBox components in extraPanel: first for Department, second for Course.
-                        Component[] components = extraPanel.getComponents();
-                        String department = "";
-                        String course = "";
-                        int comboCount = 0;
-                        for (Component comp : components) {
-                            if (comp instanceof JComboBox) {
-                                JComboBox<String> cb = (JComboBox<String>) comp;
-                                if (comboCount == 0) {
-                                    department = (String) cb.getSelectedItem();
-                                } else if (comboCount == 1) {
-                                    course = (String) cb.getSelectedItem();
-                                }
-                                comboCount++;
-                            }
-                        }
-                        newUser.setDepartment(department);
-                        newUser.setCourse(course);
-                        // Retrieve and validate the year.
-                        if (yearFieldHolder[0] != null) {
-                            String yearStr = yearFieldHolder[0].getText().trim();
-                            if (!yearStr.isEmpty()) {
-                                try {
-                                    int year = Integer.parseInt(yearStr);
-                                    newUser.setYear(year);
-                                } catch (NumberFormatException ex) {
-                                    JOptionPane.showMessageDialog(this, "Invalid year entered.", "Error", JOptionPane.ERROR_MESSAGE);
-                                    return;
-                                }
-                            } else {
-                                JOptionPane.showMessageDialog(this, "Year must be filled for a student.", "Error", JOptionPane.ERROR_MESSAGE);
-                                return;
-                            }
-                        }
-                    } else if ("Lecturer".equalsIgnoreCase(role)) {
-                        // For Lecturer, expect one JComboBox for Department.
-                        for (Component comp : extraPanel.getComponents()) {
-                            if (comp instanceof JComboBox) {
-                                JComboBox<String> cb = (JComboBox<String>) comp;
-                                newUser.setDepartment((String) cb.getSelectedItem());
-                            }
-                        }
-                    }
-
-                    // Call the UserController to add the user.
-                    UserController userController = new UserController();
-                    boolean success = userController.addUser(newUser, adminId);
-                    if (success)
-                        JOptionPane.showMessageDialog(this, "User added successfully.");
-                    else
-                        JOptionPane.showMessageDialog(this, "Failed to add user.");
-                } catch (exception.InvalidInputException ex) {
-                    JOptionPane.showMessageDialog(this, ex.getMessage(), "Validation Error", JOptionPane.ERROR_MESSAGE);
-                }
-            });
-
-            contentPanel.removeAll();
-            contentPanel.add(addPanel, BorderLayout.CENTER);
-            contentPanel.revalidate();
-            contentPanel.repaint();
-        }
-
-
-        private void loadUpdateUser() {
-            final UserController userController = new UserController();
+        private void loadViewLecturers() {
+            final UserController uc = new UserController();
             try {
-                final List<User> users = userController.getAllUsers("Admin");
-                JPanel updatePanel = new JPanel(new BorderLayout());
-                String[] columnNames = {"User ID", "Email", "Name", "Role"};
-                final DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+                final List<User> users = uc.getAllUsers("Admin");
+                String[] columnNames = {"User ID", "Email", "Name", "Role", "Department"};
+                DefaultTableModel model = new DefaultTableModel(columnNames, 0);
                 for (User user : users) {
-                    Object[] row = { user.getUserId(), user.getEmail(), user.getName(), user.getRole() };
-                    model.addRow(row);
+                    if(user.getRole().equals("Lecturer")) {
+                        Object[] row = { user.getUserId(), user.getEmail(), user.getName(), user.getRole(), user.getDepartment() };
+                        model.addRow(row);
+                    }
+
                 }
-                final JTable table = new JTable(model);
+                JTable table = new JTable(model);
 
                 // Center text in some columns
                 DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
                 centerRenderer.setHorizontalAlignment(JLabel.CENTER);
                 table.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
 
-                JScrollPane scrollPane = new JScrollPane(table);
-                updatePanel.add(scrollPane, BorderLayout.CENTER);
-                JButton updateUserButton = new JButton("Update Selected User");
-                updateUserButton.setBackground(Color.LIGHT_GRAY);
-                updateUserButton.setForeground(Color.DARK_GRAY);
-                updateUserButton.setPreferredSize(new Dimension(30, 30));
-                updateUserButton.setMaximumSize(new Dimension(30, 30));
-                updateUserButton.setFocusPainted(false);
-                updatePanel.add(updateUserButton, BorderLayout.SOUTH);
-                updateUserButton.addActionListener(e -> {
-                    int selectedRow = table.getSelectedRow();
-                    if(selectedRow < 0){
-                        JOptionPane.showMessageDialog(this, "Please select a user to edit.");
-                        return;
-                    }
-                    String userId = (String) model.getValueAt(selectedRow, 0);
-                    try {
-                        User selectedUser = userController.getUserById(userId);
-                        if(selectedUser == null){
-                            JOptionPane.showMessageDialog(this, "User not found.");
-                            return;
-                        }
-                        JPanel editPanel = new JPanel(new GridBagLayout());
-                        GridBagConstraints gridBagConstraints = new GridBagConstraints();
-                        gridBagConstraints.insets = new Insets(5, 5, 5, 5);
-                        gridBagConstraints.fill = GridBagConstraints.HORIZONTAL;
-
-                        JLabel labelEmail = new JLabel("Email:");
-                        JTextField textFieldEmail = new JTextField(selectedUser.getEmail(), 20);
-                        gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 0;
-                        editPanel.add(labelEmail, gridBagConstraints);
-                        gridBagConstraints.gridx = 1;
-                        editPanel.add(textFieldEmail, gridBagConstraints);
-
-
-                        JLabel labelName = new JLabel("Name:");
-                        JTextField textFieldName = new JTextField(selectedUser.getName(), 20);
-                        gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 1;
-                        editPanel.add(labelName, gridBagConstraints);
-                        gridBagConstraints.gridx = 1;
-                        editPanel.add(textFieldName, gridBagConstraints);
-
-                        JLabel labelRole = new JLabel("Role:");
-                        JTextField textFieldRole = new JTextField(selectedUser.getRole(), 20);
-                        gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 2;
-                        editPanel.add(labelRole, gridBagConstraints);
-                        gridBagConstraints.gridx = 1;
-                        editPanel.add(textFieldRole, gridBagConstraints);
-                        textFieldRole.setEditable(false); // Role not editable in update
-
-                        final String PASSWORD_PLACEHOLDER = "********";
-                        JLabel labelPassword = new JLabel("Password:");
-                        JPasswordField passwordField = new JPasswordField( PASSWORD_PLACEHOLDER,20);
-                        passwordField.setEchoChar('*');
-                        // A focus listener so that when the field gains focus, if it contains
-                        // the placeholder it's cleared, and when it loses focus and is empty, the placeholder is restored.
-                        passwordField.addFocusListener(new FocusAdapter() {
-                            @Override
-                            public void focusGained(FocusEvent e) {
-                                String current = new String(passwordField.getPassword());
-                                if (current.equals(PASSWORD_PLACEHOLDER)) {
-                                    passwordField.setText("");
-                                }
-                            }
-
-                            @Override
-                            public void focusLost(FocusEvent e) {
-                                String current = new String(passwordField.getPassword());
-                                if (current.isEmpty()) {
-                                    passwordField.setText(PASSWORD_PLACEHOLDER);
-                                }
-                            }
-                        });
-                        gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 3;
-                        editPanel.add(labelPassword, gridBagConstraints);
-                        gridBagConstraints.gridx = 1;
-                        editPanel.add(passwordField, gridBagConstraints);
-
-                        JPanel extraPanel = new JPanel(new GridBagLayout());
-                        gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 4; gridBagConstraints.gridwidth = 2;
-                        editPanel.add(extraPanel, gridBagConstraints);
-
-                        JButton updateUserSubmitButton = new JButton("Update User");
-                        updateUserSubmitButton.setBackground(Color.LIGHT_GRAY);
-                        updateUserSubmitButton.setForeground(Color.DARK_GRAY);
-                        updateUserButton.setPreferredSize(new Dimension(30, 30));
-                        updateUserButton.setMaximumSize(new Dimension(30, 30));
-                        updateUserSubmitButton.setFocusPainted(false);
-                        gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 5; gridBagConstraints.gridwidth = 2;
-                        editPanel.add(updateUserSubmitButton, gridBagConstraints);
-
-
-                        // Get full list of departments from MethodsUtil.
-                        final String[] departments = controller.MethodsUtil.getDepartments();
-                        // Holder for the Year text field (if needed).
-                        final JTextField[] yearFieldHolder = new JTextField[1];
-
-                        // Runnable to update extraPanel based on selected role.
-                        Runnable updateExtraPanel = () -> {
-                            extraPanel.removeAll();
-                            GridBagConstraints gridBagContraintsExtra = new GridBagConstraints();
-                            gridBagContraintsExtra.insets = new Insets(5, 5, 5, 5);
-                            gridBagContraintsExtra.fill = GridBagConstraints.HORIZONTAL;
-                            gridBagContraintsExtra.gridx = 0; gridBagContraintsExtra.gridy = 0;
-
-                            String usersRole = textFieldRole.getText();
-                            if ("Student".equalsIgnoreCase(usersRole)) {
-                                // For Student, add Department, Course, and Year.
-                                JLabel labelDept = new JLabel("Department:");
-                                JComboBox<String> comboBoxDept = new JComboBox<>(departments);
-                                gridBagContraintsExtra.gridx = 0; gridBagContraintsExtra.gridy = 0;
-                                extraPanel.add(labelDept, gridBagContraintsExtra);
-                                gridBagContraintsExtra.gridx = 1;
-                                extraPanel.add(comboBoxDept, gridBagContraintsExtra);
-
-                                JLabel labelCourse = new JLabel("Course:");
-                                String selectedDept = (String) comboBoxDept.getSelectedItem();
-                                String[] courses = controller.MethodsUtil.getCoursesForDepartment(selectedDept);
-                                JComboBox<String> cbCourse = new JComboBox<>(courses);
-                                gridBagContraintsExtra.gridx = 0; gridBagContraintsExtra.gridy = 1;
-                                extraPanel.add(labelCourse, gridBagContraintsExtra);
-                                gridBagContraintsExtra.gridx = 1;
-                                extraPanel.add(cbCourse, gridBagContraintsExtra);
-
-                                // Add listener to update courses when department changes.
-                                comboBoxDept.addActionListener(ec -> {
-                                    String dept = (String) comboBoxDept.getSelectedItem();
-                                    String[] newCourses = controller.MethodsUtil.getCoursesForDepartment(dept);
-                                    cbCourse.setModel(new DefaultComboBoxModel<>(newCourses));
-                                });
-
-                                // Add Year field.
-                                JLabel labelYear = new JLabel("Year:");
-                                String[] years = {"1","2","3","4"};
-                                JComboBox<String> comboBoxYear = new JComboBox<>(years);
-                                String currentYear;
-                                if(selectedUser.getYear() != null){
-                                    currentYear = selectedUser.getYear().toString();
-                                } else {
-                                    currentYear = "1";
-                                }
-                                comboBoxYear.setSelectedItem(currentYear);
-                                gridBagContraintsExtra.gridx = 0; gridBagContraintsExtra.gridy = 2;
-                                extraPanel.add(labelYear, gridBagContraintsExtra);
-                                gridBagContraintsExtra.gridx = 1;
-                                extraPanel.add(comboBoxYear, gridBagContraintsExtra);
-                            } else if ("Lecturer".equalsIgnoreCase(usersRole)) {
-                                // For Lecturer, add only Department.
-                                JLabel labelDept = new JLabel("Department:");
-                                JComboBox<String> comboBoxDept = new JComboBox<>(departments);
-                                gridBagContraintsExtra.gridx = 0; gridBagContraintsExtra.gridy = 0;
-                                extraPanel.add(labelDept, gridBagContraintsExtra);
-                                gridBagContraintsExtra.gridx = 1;
-                                extraPanel.add(comboBoxDept, gridBagContraintsExtra);
-                            }
-                            extraPanel.revalidate();
-                            extraPanel.repaint();
-                        };
-
-                        // Initial update.
-                        updateExtraPanel.run();
-
-                        updateUserSubmitButton.addActionListener(ev -> {
-
-                            try{
-                                String email = InputValidator.validateEmail(textFieldEmail.getText(), textFieldRole.getText());
-                                String name = InputValidator.validateName(textFieldName.getText());
-                                String updatedPassword = new String(passwordField.getPassword()).trim();
-                                if (!updatedPassword.equals(PASSWORD_PLACEHOLDER) && !updatedPassword.isEmpty()) {
-                                    selectedUser.setPassword(controller.PasswordUtils.hashPassword(updatedPassword));
-                                }
-
-
-                                selectedUser.setEmail(email);
-                                selectedUser.setName(name);
-
-                                if("Student".equalsIgnoreCase(selectedUser.getRole())) {
-                                    Component[] components = extraPanel.getComponents();
-                                    String department = "";
-                                    String course = "";
-                                    String yearString = "";
-                                    int comboCount = 0;
-                                    for(Component component : components) {
-                                        if(component instanceof JComboBox) {
-                                            JComboBox<String> comboBox = (JComboBox<String>) component;
-                                            if(comboCount == 0){
-                                                department = (String) comboBox.getSelectedItem();
-                                            } else if (comboCount == 1){
-                                                course = (String) comboBox.getSelectedItem();
-                                            } else if (comboCount == 2){
-                                                yearString = (String) comboBox.getSelectedItem();
-                                            }
-                                            comboCount++;
-                                        }
-                                    }
-                                    selectedUser.setDepartment(department);
-                                    selectedUser.setCourse(course);
-                                    try {
-                                        int year = Integer.parseInt(yearString);
-                                        selectedUser.setYear(year);
-                                    } catch (NumberFormatException numberException) {
-                                        JOptionPane.showMessageDialog(this, "Invalid year selected", "Error", JOptionPane.ERROR_MESSAGE);
-                                        return;
-                                    }
-                                    }else if("Lecturer".equalsIgnoreCase(selectedUser.getRole())){
-                                        for(Component component : extraPanel.getComponents()) {
-                                            if(component instanceof JComboBox) {
-                                                JComboBox<String> comboBox = (JComboBox<String>) component;
-                                                selectedUser.setDepartment((String) comboBox.getSelectedItem());
-                                            }
-                                        }
-                                    }
-
-                                boolean success = userController.updateUser(selectedUser, adminId);
-                                if(success)
-                                    JOptionPane.showMessageDialog(this, "User updated successfully.");
-                                else
-                                    JOptionPane.showMessageDialog(this, "Failed to update user.");
-                            }catch(exception.InvalidInputException ex){
-                                JOptionPane.showMessageDialog(this, ex.getMessage(), "Validation Error", JOptionPane.ERROR_MESSAGE);
-                            }
-
-                        });
-
-                        contentPanel.removeAll();
-                        contentPanel.add(editPanel, BorderLayout.CENTER);
-                        contentPanel.revalidate();
-                        contentPanel.repaint();
-                    } catch (DatabaseOperationException ex) {
-                        JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
-                    }
-                });
                 contentPanel.removeAll();
-                contentPanel.add(updatePanel, BorderLayout.CENTER);
+                contentPanel.add(new JScrollPane(table), BorderLayout.CENTER);
                 contentPanel.revalidate();
                 contentPanel.repaint();
             } catch (DatabaseOperationException ex) {
@@ -870,59 +436,35 @@ public class AdminFrame extends JFrame {
             }
         }
 
-        private void loadDeleteUser() {
-            final UserController userController = new UserController();
+        private void loadViewStudents() {
+            final UserController uc = new UserController();
             try {
-                final List<User> users = userController.getAllUsers("Admin");
-                JPanel deletePanel = new JPanel(new BorderLayout());
-                String[] columnNames = {"User ID", "Email", "Name", "Role"};
-                final DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+                final List<User> users = uc.getAllUsers("Admin");
+                String[] columnNames = {"Student ID", "Email", "Name", "Role", "Department", "Course", "Year"};
+                DefaultTableModel model = new DefaultTableModel(columnNames, 0);
                 for (User user : users) {
-                    Object[] row = { user.getUserId(), user.getEmail(), user.getName(), user.getRole() };
-                    model.addRow(row);
+                    if(user.getRole().equals("Student")) {
+                        Object[] row = { user.getUserId(), user.getEmail(), user.getName(), user.getRole(), user.getDepartment(), user.getCourse(), user.getYear() };
+                        model.addRow(row);
+                    }
+
                 }
-                final JTable table = new JTable(model);
+                JTable table = new JTable(model);
 
                 // Center text in some columns
                 DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
                 centerRenderer.setHorizontalAlignment(JLabel.CENTER);
                 table.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
 
-                JScrollPane scrollPane = new JScrollPane(table);
-                deletePanel.add(scrollPane, BorderLayout.CENTER);
-                JButton deleteUserButton = new JButton("Delete Selected User");
-                deleteUserButton.setBackground(Color.LIGHT_GRAY);
-                deleteUserButton.setForeground(Color.DARK_GRAY);
-                deleteUserButton.setPreferredSize(new Dimension(30, 30));
-                deleteUserButton.setMaximumSize(new Dimension(30, 30));
-                deleteUserButton.setFocusPainted(false);
-                deletePanel.add(deleteUserButton, BorderLayout.SOUTH);
-                deleteUserButton.addActionListener(e -> {
-                    int selectedRow = table.getSelectedRow();
-                    if(selectedRow < 0){
-                        JOptionPane.showMessageDialog(this, "Please select a user to delete.");
-                        return;
-                    }
-                    String userId = (String) model.getValueAt(selectedRow, 0);
-                    int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete user " + userId + "?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
-                    if(confirm == JOptionPane.YES_OPTION){
-                        boolean success = userController.deleteUser(userId, adminId);
-                        if(success){
-                            JOptionPane.showMessageDialog(this, "User deleted successfully.");
-                            model.removeRow(selectedRow);
-                        } else {
-                            JOptionPane.showMessageDialog(this, "Failed to delete user.");
-                        }
-                    }
-                });
                 contentPanel.removeAll();
-                contentPanel.add(deletePanel, BorderLayout.CENTER);
+                contentPanel.add(new JScrollPane(table), BorderLayout.CENTER);
                 contentPanel.revalidate();
                 contentPanel.repaint();
             } catch (DatabaseOperationException ex) {
                 JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
             }
         }
+
     }
 
     // --------------------------
@@ -941,18 +483,13 @@ public class AdminFrame extends JFrame {
 
             JButton buttonViewAllEquipment = createMenuItem("View All Equipment");
             JButton buttonViewByType = createMenuItem("View Equipment by Type");
-            JButton buttonAddEquipment = createMenuItem("Add New Equipment");
-            JButton buttonUpdateEquipment = createMenuItem("Update Equipment");
-            JButton buttonDeleteEquipment = createMenuItem("Delete Equipment");
+            JButton buttonUpdateEquipmentState = createMenuItem("Update Equipment State");
             sidebar.add(buttonViewAllEquipment);
             sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
             sidebar.add(buttonViewByType);
             sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
-            sidebar.add(buttonAddEquipment);
-            sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
-            sidebar.add(buttonUpdateEquipment);
-            sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
-            sidebar.add(buttonDeleteEquipment);
+            sidebar.add(buttonUpdateEquipmentState);
+
 
             contentPanel = new JPanel(new BorderLayout());
             JLabel placeholderLabel = new JLabel("Select an option from the sidebar.");
@@ -983,17 +520,9 @@ public class AdminFrame extends JFrame {
                     throw new RuntimeException(ex);
                 }
             });
-            buttonAddEquipment.addActionListener(e -> loadAddEquipment());
-            buttonUpdateEquipment.addActionListener(e -> {
+            buttonUpdateEquipmentState.addActionListener(e -> {
                 try {
-                    loadUpdateEquipment();
-                } catch (DatabaseOperationException ex) {
-                    throw new RuntimeException(ex);
-                }
-            });
-            buttonDeleteEquipment.addActionListener(e -> {
-                try {
-                    loadDeleteEquipment();
+                    loadUpdateEquipmentState();
                 } catch (DatabaseOperationException ex) {
                     throw new RuntimeException(ex);
                 }
@@ -1049,82 +578,7 @@ public class AdminFrame extends JFrame {
             contentPanel.repaint();
         }
 
-        private void loadAddEquipment() {
-            JPanel addPanel = new JPanel(new GridBagLayout());
-            GridBagConstraints gridBagConstraints = new GridBagConstraints();
-            gridBagConstraints.insets = new Insets(5,5,5,5);
-            gridBagConstraints.fill = GridBagConstraints.HORIZONTAL;
-
-            JLabel labelName = new JLabel("Name:");
-            JTextField textFieldName = new JTextField(20);
-            JLabel labelType = new JLabel("Type:");
-            String[] types = {"Audio Recorder", "Camera", "Drone", "Laptop", "Lighting", "Projector", "VR Headset", "Other"};
-            JComboBox<String> comboBoxType = new JComboBox<>(types);
-            JLabel labelDescription = new JLabel("Description:");
-            JTextField textFieldDescription = new JTextField(20);
-            JLabel labelState = new JLabel("State:");
-            String[] states = {"New", "Good", "Fair", "Poor"};
-            JComboBox<String> comboBoxState = new JComboBox<>(states);
-
-            JButton addEquipmentButton = new JButton("Add Equipment");
-            addEquipmentButton.setBackground(Color.LIGHT_GRAY);
-            addEquipmentButton.setForeground(Color.DARK_GRAY);
-            addEquipmentButton.setPreferredSize(new Dimension(30, 30));
-            addEquipmentButton.setMaximumSize(new Dimension(30, 30));
-            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 0;
-            addPanel.add(labelName, gridBagConstraints);
-            gridBagConstraints.gridx = 1;
-            addPanel.add(textFieldName, gridBagConstraints);
-            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 1;
-            addPanel.add(labelType, gridBagConstraints);
-            gridBagConstraints.gridx = 1;
-            addPanel.add(comboBoxType, gridBagConstraints);
-            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 2;
-            addPanel.add(labelDescription, gridBagConstraints);
-            gridBagConstraints.gridx = 1;
-            addPanel.add(textFieldDescription, gridBagConstraints);
-            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 3;
-            addPanel.add(labelState, gridBagConstraints);
-            gridBagConstraints.gridx = 1;
-            addPanel.add(comboBoxState, gridBagConstraints);
-            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 4; gridBagConstraints.gridwidth = 2;
-            addPanel.add(addEquipmentButton, gridBagConstraints);
-
-            addEquipmentButton.addActionListener(e -> {
-                try{
-                    String name = InputValidator.validateEquipmentName(textFieldName.getText());
-                    String type = (String) comboBoxType.getSelectedItem();
-                    String description = InputValidator.validateEquipmentDescription(textFieldDescription.getText());
-                    String state = (String) comboBoxState.getSelectedItem();
-                    if(name.isEmpty()){
-                        JOptionPane.showMessageDialog(this, "Name cannot be empty.", "Error", JOptionPane.ERROR_MESSAGE);
-                        return;
-                    }
-                    Equipment equipment = new Equipment();
-                    equipment.setName(name);
-                    equipment.setType(type);
-                    equipment.setDescription(description);
-                    equipment.setState(state);
-                    equipment.setStatus("Available");
-                    EquipmentController equipmentController = new EquipmentController();
-                    boolean success = equipmentController.addEquipment(equipment, adminId);
-                    if(success)
-                        JOptionPane.showMessageDialog(this, "Equipment added successfully.");
-                    else
-                        JOptionPane.showMessageDialog(this, "Failed to add equipment.");
-                }catch(exception.InvalidInputException ex){
-                    JOptionPane.showMessageDialog(this, ex.getMessage(), "Validation Error", JOptionPane.ERROR_MESSAGE);
-                }
-
-            });
-
-            contentPanel.removeAll();
-            contentPanel.add(addPanel, BorderLayout.CENTER);
-            contentPanel.revalidate();
-            contentPanel.repaint();
-        }
-
-        private void loadUpdateEquipment() throws DatabaseOperationException {
+        private void loadUpdateEquipmentState() throws DatabaseOperationException {
             EquipmentController equipmentController = new EquipmentController();
             List<Equipment> equipments = equipmentController.getAllEquipment("Admin");
             JPanel updatePanel = new JPanel(new BorderLayout());
@@ -1172,12 +626,15 @@ public class AdminFrame extends JFrame {
 
                 JLabel labelName = new JLabel("Name:");
                 JTextField textFieldName = new JTextField(selectedEquipment.getName(), 20);
+                textFieldName.setEditable(false);
                 JLabel labelType = new JLabel("Type:");
                 String[] types = {"Audio Recorder", "Camera", "Drone", "Laptop", "Lighting", "Projector", "VR Headset", "Other"};
                 JComboBox<String> comboBoxType = new JComboBox<>(types);
                 comboBoxType.setSelectedItem(selectedEquipment.getType());
+                comboBoxType.setEditable(false);
                 JLabel labelDescription = new JLabel("Description:");
                 JTextField textFieldDescription = new JTextField(selectedEquipment.getDescription(), 20);
+                textFieldDescription.setEditable(false);
                 JLabel labelState = new JLabel("State:");
                 String[] states = {"New", "Good", "Fair", "Poor"};
                 JComboBox<String> comboBoxState = new JComboBox<>(states);
@@ -1237,56 +694,6 @@ public class AdminFrame extends JFrame {
             });
             contentPanel.removeAll();
             contentPanel.add(updatePanel, BorderLayout.CENTER);
-            contentPanel.revalidate();
-            contentPanel.repaint();
-        }
-
-        private void loadDeleteEquipment() throws DatabaseOperationException {
-            EquipmentController equipmentController = new EquipmentController();
-            List<Equipment> equipments = equipmentController.getAllEquipment("Admin");
-            JPanel deletePanel = new JPanel(new BorderLayout());
-            String[] columnNames = {"Equipment ID", "Name", "Type", "Description", "Status", "State"};
-            final DefaultTableModel model = new DefaultTableModel(columnNames, 0);
-            for (Equipment equipment : equipments) {
-                Object[] row = { equipment.getEquipmentId(), equipment.getName(), equipment.getType(), equipment.getDescription(), equipment.getStatus(), equipment.getState() };
-                model.addRow(row);
-            }
-            final JTable table = new JTable(model);
-
-            // Center text in some columns
-            DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
-            centerRenderer.setHorizontalAlignment(JLabel.CENTER);
-            table.getColumnModel().getColumn(4).setCellRenderer(centerRenderer);
-            table.getColumnModel().getColumn(5).setCellRenderer(centerRenderer);
-
-            JScrollPane scrollPane = new JScrollPane(table);
-            deletePanel.add(scrollPane, BorderLayout.CENTER);
-            JButton deleteEquipmentButton = new JButton("Delete Selected Equipment");
-            deleteEquipmentButton.setBackground(Color.LIGHT_GRAY);
-            deleteEquipmentButton.setForeground(Color.DARK_GRAY);
-            deleteEquipmentButton.setPreferredSize(new Dimension(30, 30));
-            deleteEquipmentButton.setMaximumSize(new Dimension(30, 30));
-            deletePanel.add(deleteEquipmentButton, BorderLayout.SOUTH);
-            deleteEquipmentButton.addActionListener(e -> {
-                int selectedRow = table.getSelectedRow();
-                if(selectedRow < 0){
-                    JOptionPane.showMessageDialog(this, "Please select equipment to delete.");
-                    return;
-                }
-                String equipmentId = (String) model.getValueAt(selectedRow, 0);
-                int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete equipment " + equipmentId + "?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
-                if(confirm == JOptionPane.YES_OPTION){
-                    boolean success = equipmentController.deleteEquipment(equipmentId, adminId);
-                    if(success){
-                        JOptionPane.showMessageDialog(this, "Equipment deleted successfully.");
-                        model.removeRow(selectedRow);
-                    } else {
-                        JOptionPane.showMessageDialog(this, "Failed to delete equipment.");
-                    }
-                }
-            });
-            contentPanel.removeAll();
-            contentPanel.add(deletePanel, BorderLayout.CENTER);
             contentPanel.revalidate();
             contentPanel.repaint();
         }
