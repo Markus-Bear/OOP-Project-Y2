@@ -5,43 +5,19 @@ import model.User;
 import model.Equipment;
 import model.Reservation;
 import exception.DatabaseOperationException;
+
+import java.awt.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
-import javax.swing.JFrame;
-import javax.swing.JTabbedPane;
-import javax.swing.JPanel;
-import javax.swing.BoxLayout;
-import javax.swing.Box;
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JTextField;
-import javax.swing.JScrollPane;
-import javax.swing.JTable;
-import javax.swing.JComboBox;
-import javax.swing.JOptionPane;
-import javax.swing.JSplitPane;
-import javax.swing.JPasswordField;
-import javax.swing.DefaultComboBoxModel;
-import javax.swing.SwingConstants;
-import javax.swing.Timer;
-import javax.swing.BorderFactory;
+import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.plaf.basic.BasicButtonUI;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-import java.awt.Component;
-import java.awt.BorderLayout;
-import java.awt.GridLayout;
-import java.awt.FlowLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.GridBagLayout;
-import java.awt.GridBagConstraints;
-import java.awt.Insets;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.FocusAdapter;
@@ -70,9 +46,9 @@ public class AdminFrame extends JFrame {
         this.loggedInUser = user;
         setTitle("Media Equipment Rental System - Admin Menu - " + user.getName());
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(900, 600);
+        setSize(800, 600);
         setLocationRelativeTo(null);
-
+        setIconImage(new ImageIcon(getClass().getResource("/view/icons/college.png")).getImage());
         JPanel mainPanel = new JPanel(new BorderLayout());
         tabbedPane = new JTabbedPane();
 
@@ -83,6 +59,14 @@ public class AdminFrame extends JFrame {
         tabbedPane.addTab("Equipment Management", new EquipmentManagementPanel(loggedInUser.getUserId()));
         tabbedPane.addTab("Reservations Management", new ReservationsManagementPanel(loggedInUser.getUserId()));
 
+        tabbedPane.setBackground(Color.DARK_GRAY);
+        tabbedPane.setForeground(Color.WHITE);
+
+
+        for(int i= 0; i < tabbedPane.getTabCount(); i++) {
+            tabbedPane.setBackgroundAt(i, Color.DARK_GRAY);
+            tabbedPane.setForegroundAt(i, Color.WHITE);
+        }
         // Adds a ChangeListener to refresh any tab that implements the  Refreshable interface.
         tabbedPane.addChangeListener(new ChangeListener() {
             @Override
@@ -210,6 +194,13 @@ public class AdminFrame extends JFrame {
             // Enable data labels on the bar chart:
             chart.getCategoryPlot().getRenderer().setDefaultItemLabelGenerator(new org.jfree.chart.labels.StandardCategoryItemLabelGenerator());
             chart.getCategoryPlot().getRenderer().setDefaultItemLabelsVisible(true);
+            // Set chart and plot background to white.
+            chart.setBackgroundPaint(Color.WHITE);
+            chart.getCategoryPlot().setBackgroundPaint(Color.WHITE);
+            chart.getCategoryPlot().setOutlineVisible(false);
+
+            // Change the bar color for series 0 to orange.
+            chart.getCategoryPlot().getRenderer().setSeriesPaint(0, Color.DARK_GRAY);
             return chart;
         }
 
@@ -231,6 +222,17 @@ public class AdminFrame extends JFrame {
             dataset.setValue("Not Checked Out", notCheckedOut);
             JFreeChart chart = ChartFactory.createPieChart("Equipment Checked Out", dataset, true, true, false);
             // (You can add a StandardPieSectionLabelGenerator here for more detailed labels.)
+
+            // Set chart and plot background to white.
+            chart.setBackgroundPaint(Color.WHITE);
+            // Get the plot as a PiePlot and set its properties.
+            org.jfree.chart.plot.PiePlot plot = (org.jfree.chart.plot.PiePlot) chart.getPlot();
+            plot.setBackgroundPaint(Color.WHITE);
+            plot.setOutlineVisible(false);
+
+            // To set section colors (if needed), use setSectionPaint. For example:
+            plot.setSectionPaint("Checked Out", Color.DARK_GRAY);
+            plot.setSectionPaint("Not Checked Out", Color.GREEN);
             return chart;
         }
 
@@ -261,6 +263,14 @@ public class AdminFrame extends JFrame {
             JFreeChart chart = ChartFactory.createBarChart("Reservations Status", "Status", "Count", dataset);
             chart.getCategoryPlot().getRenderer().setDefaultItemLabelGenerator(new org.jfree.chart.labels.StandardCategoryItemLabelGenerator());
             chart.getCategoryPlot().getRenderer().setDefaultItemLabelsVisible(true);
+
+            // Set chart and plot background to white.
+            chart.setBackgroundPaint(Color.WHITE);
+            chart.getCategoryPlot().setBackgroundPaint(Color.WHITE);
+            chart.getCategoryPlot().setOutlineVisible(false);
+
+            // Change the bar color for series 0 to orange.
+            chart.getCategoryPlot().getRenderer().setSeriesPaint(0, Color.DARK_GRAY);
             return chart;
         }
 
@@ -286,6 +296,14 @@ public class AdminFrame extends JFrame {
             JFreeChart chart = ChartFactory.createBarChart("User Reservations", "User", "Count", dataset);
             chart.getCategoryPlot().getRenderer().setDefaultItemLabelGenerator(new org.jfree.chart.labels.StandardCategoryItemLabelGenerator());
             chart.getCategoryPlot().getRenderer().setDefaultItemLabelsVisible(true);
+
+            // Set chart and plot background to white.
+            chart.setBackgroundPaint(Color.WHITE);
+            chart.getCategoryPlot().setBackgroundPaint(Color.WHITE);
+            chart.getCategoryPlot().setOutlineVisible(false);
+
+            // Change the bar color for series 0 to orange.
+            chart.getCategoryPlot().getRenderer().setSeriesPaint(0, Color.DARK_GRAY);
             return chart;
         }
     }
@@ -305,6 +323,11 @@ public class AdminFrame extends JFrame {
             gridBagConstraints.insets = new Insets(10, 10, 10, 10);
             gridBagConstraints.fill = GridBagConstraints.HORIZONTAL;
 
+            Font bigFont = new Font("SansSerif", Font.PLAIN, 16);
+
+
+
+
             JLabel labelUserId = new JLabel("User ID:");
             JTextField textFieldUserId = new JTextField(user.getUserId(), 20);
             textFieldUserId.setEditable(false);
@@ -320,6 +343,16 @@ public class AdminFrame extends JFrame {
             JLabel labelRole = new JLabel("Role:");
             JTextField textFieldRole = new JTextField(user.getRole(), 20);
             textFieldRole.setEditable(false);
+
+            // For each label and text field:
+            labelUserId.setFont(bigFont);
+            textFieldUserId.setFont(bigFont);
+            labelName.setFont(bigFont);
+            textFieldName.setFont(bigFont);
+            labelEmail.setFont(bigFont);
+            textFieldEmail.setFont(bigFont);
+            labelRole.setFont(bigFont);
+            textFieldRole.setFont(bigFont);
 
             gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 0;
             add(labelUserId, gridBagConstraints);
@@ -346,14 +379,17 @@ public class AdminFrame extends JFrame {
      * @param text the button label.
      * @return the styled JButton.
      */
-    private JButton createMenuItem(String text) {
+    private JButton createMenuItem(String text, String iconPath) {
         JButton button = new JButton(text);
         // Force a basic UI that respects our background color changes.
         button.setUI(new BasicButtonUI());
 
+        if (iconPath != null) {
+            button.setIcon(new ImageIcon(getClass().getResource(iconPath)));
+        }
+
         button.setAlignmentX(Component.CENTER_ALIGNMENT);
-        button.setPreferredSize(new Dimension(0, 50));
-        button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+        button.setPreferredSize(new Dimension(0,100));
         button.setBackground(Color.DARK_GRAY);
         button.setForeground(Color.WHITE);
         button.setFocusPainted(true);
@@ -362,6 +398,8 @@ public class AdminFrame extends JFrame {
         button.setOpaque(true);
         button.setRolloverEnabled(true);
         button.setBorderPainted(false);
+        button.setVerticalTextPosition(SwingConstants.BOTTOM);
+        button.setHorizontalTextPosition(SwingConstants.CENTER);
 
         // Define colors for different states.
         final Color defaultColor = Color.DARK_GRAY;
@@ -416,18 +454,18 @@ public class AdminFrame extends JFrame {
             sidebar.setBackground(Color.DARK_GRAY);
 
 
-            JButton buttonViewAllUsers = createMenuItem("View All Users");
-            JButton buttonAddUser = createMenuItem("Add New User");
-            JButton buttonUpdateUser = createMenuItem("Update User");
-            JButton buttonDeleteUser = createMenuItem("Delete User");
+            JButton buttonViewAllUsers = createMenuItem("View All Users", "/view/icons/view-user.png");
+            JButton buttonAddUser = createMenuItem("Add New User", "/view/icons/add-user.png");
+            JButton buttonUpdateUser = createMenuItem("Update User","/view/icons/update-user.png");
+            JButton buttonDeleteUser = createMenuItem("Delete User","/view/icons/delete-user.png");
 
-            sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
+            sidebar.add(Box.createRigidArea(new Dimension(0,100)));
             sidebar.add(buttonViewAllUsers);
-            sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
+            sidebar.add(Box.createRigidArea(new Dimension(0,100)));
             sidebar.add(buttonAddUser);
-            sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
+            sidebar.add(Box.createRigidArea(new Dimension(0,100)));
             sidebar.add(buttonUpdateUser);
-            sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
+            sidebar.add(Box.createRigidArea(new Dimension(0,100)));
             sidebar.add(buttonDeleteUser);
 
             // Create content panel with a placeholder.
@@ -1085,19 +1123,20 @@ public class AdminFrame extends JFrame {
             sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
             sidebar.setBackground(Color.DARK_GRAY);
 
-            JButton buttonViewAllEquipment = createMenuItem("View All Equipment");
-            JButton buttonViewByType = createMenuItem("View Equipment by Type");
-            JButton buttonAddEquipment = createMenuItem("Add New Equipment");
-            JButton buttonUpdateEquipment = createMenuItem("Update Equipment");
-            JButton buttonDeleteEquipment = createMenuItem("Delete Equipment");
+            JButton buttonViewAllEquipment = createMenuItem("View All Equipment", "/view/icons/view.png");
+            JButton buttonViewByType = createMenuItem("View Equipment by Type", "/view/icons/view.png");
+            JButton buttonAddEquipment = createMenuItem("Add New Equipment", "/view/icons/add.png");
+            JButton buttonUpdateEquipment = createMenuItem("Update Equipment","/view/icons/update.png");
+            JButton buttonDeleteEquipment = createMenuItem("Delete Equipment","/view/icons/delete.png");
+            sidebar.add(Box.createRigidArea(new Dimension(0,50)));
             sidebar.add(buttonViewAllEquipment);
-            sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
+            sidebar.add(Box.createRigidArea(new Dimension(0,50)));
             sidebar.add(buttonViewByType);
-            sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
+            sidebar.add(Box.createRigidArea(new Dimension(0,50)));
             sidebar.add(buttonAddEquipment);
-            sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
+            sidebar.add(Box.createRigidArea(new Dimension(0,50)));
             sidebar.add(buttonUpdateEquipment);
-            sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
+            sidebar.add(Box.createRigidArea(new Dimension(0,50)));
             sidebar.add(buttonDeleteEquipment);
 
             contentPanel = new JPanel(new BorderLayout());
@@ -1523,14 +1562,15 @@ public class AdminFrame extends JFrame {
             sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
             sidebar.setBackground(Color.DARK_GRAY);
 
-            JButton buttonApproval = createMenuItem("Approve/Reject Reservations");
-            JButton buttonCheckOut = createMenuItem("Check-Out Equipment");
-            JButton buttonCheckIn = createMenuItem("Check-In Equipment");
+            JButton buttonApproval = createMenuItem("Approve/Reject Reservations","/view/icons/reservations.png");
+            JButton buttonCheckOut = createMenuItem("Check-Out Equipment","/view/icons/check-out.png");
+            JButton buttonCheckIn = createMenuItem("Check-In Equipment","/view/icons/check-in.png");
 
+            sidebar.add(Box.createRigidArea(new Dimension(0,150)));
             sidebar.add(buttonApproval);
-            sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
+            sidebar.add(Box.createRigidArea(new Dimension(0,100)));
             sidebar.add(buttonCheckOut);
-            sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
+            sidebar.add(Box.createRigidArea(new Dimension(0,100)));
             sidebar.add(buttonCheckIn);
 
             contentPanel = new JPanel(new BorderLayout());
