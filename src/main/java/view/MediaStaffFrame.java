@@ -11,42 +11,19 @@ import model.User;
 import model.Equipment;
 import model.Reservation;
 import exception.DatabaseOperationException;
+
+import java.awt.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
-import javax.swing.JFrame;
-import javax.swing.JTabbedPane;
-import javax.swing.JPanel;
-import javax.swing.BoxLayout;
-import javax.swing.Box;
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JTextField;
-import javax.swing.JScrollPane;
-import javax.swing.JTable;
-import javax.swing.JComboBox;
-import javax.swing.JOptionPane;
-import javax.swing.JSplitPane;
-import javax.swing.JPasswordField;
-import javax.swing.SwingConstants;
-import javax.swing.Timer;
-import javax.swing.BorderFactory;
+import javax.swing.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.plaf.basic.BasicButtonUI;
-import java.awt.Component;
-import java.awt.BorderLayout;
-import java.awt.GridLayout;
-import java.awt.FlowLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.GridBagLayout;
-import java.awt.GridBagConstraints;
-import java.awt.Insets;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import org.jfree.chart.ChartFactory;
@@ -71,11 +48,12 @@ public class MediaStaffFrame extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(900, 600);
         setLocationRelativeTo(null);
-
+        setIconImage(new ImageIcon(getClass().getResource("/view/icons/college.png")).getImage());
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
         JPanel mainPanel = new JPanel(new BorderLayout());
         tabbedPane = new JTabbedPane();
 
-        // Create tabs (Home tab added first)
+        // Creates and adds tabs.
         tabbedPane.addTab("Home", new HomePanel(loggedInUser));
         tabbedPane.addTab("View Profile", new ViewProfilePanel(loggedInUser));
         tabbedPane.addTab("User Management", new UserManagementPanel());
@@ -116,11 +94,14 @@ public class MediaStaffFrame extends JFrame {
 
         add(mainPanel);
     }
+    // =========================
+    // Inner Classes for Panels
+    // =========================
 
     /**
-     * The HomePanel class displays various charts (equipment states, checked out equipment,
-     * reservations status, and user reservations) in a grid layout. It periodically refreshes
-     * the charts using a Timer.
+     * HomePanel displays an overview of system statistics using charts.
+     * It includes charts for equipment states, checked-out equipment, reservation status, and user reservations.
+     * The panel automatically refreshes its charts every 3 seconds.
      */
     class HomePanel extends JPanel {
         private ChartPanel equipmentStateChartPanel;
@@ -128,21 +109,19 @@ public class MediaStaffFrame extends JFrame {
         private ChartPanel reservationsStatusChartPanel;
         private ChartPanel userReservationsChartPanel;
         private Timer timer;
-        private User loggedInUser; // access to the logged-in user
+        private User loggedInUser; // Logged-in user for context
 
         /**
-         * Constructs a HomePanel for the given user and initializes all chart panels.
+         * Constructs a HomePanel for the specified user.
          *
-         * @param user the currently logged-in user.
+         * @param user the logged-in User.
          */
         public HomePanel(User user) {
             this.loggedInUser = user;
-            // Use a GridLayout (2 rows x 2 columns) for four charts.
-            setLayout(new GridLayout(2, 2, 10, 10)); // 10px horizontal & vertical gaps
+            // Use a (2 rows x 2 columns) GridLayout with 10px gaps.
+            setLayout(new GridLayout(2, 2, 10, 10));
+            int chartSize = 300;
 
-            int chartSize = 300; // width and height (adjust as needed)
-
-            // Initialize and add each chart panel
             // Equipment States Chart (Bar Chart)
             equipmentStateChartPanel = new ChartPanel(createEquipmentStateChart());
             equipmentStateChartPanel.setPreferredSize(new Dimension(chartSize, chartSize));
@@ -163,13 +142,13 @@ public class MediaStaffFrame extends JFrame {
             userReservationsChartPanel.setPreferredSize(new Dimension(chartSize, chartSize));
             add(userReservationsChartPanel);
 
-            // Timer to update all Charts every 3 seconds.
+            // Set up a Timer to update all Charts every 3 seconds.
             timer = new Timer(3000, e -> updateAllCharts());
             timer.start();
         }
 
         /**
-         * Updates all chart panels by creating new charts and repainting the panels.
+         * Updates all charts by recreating them.
          */
         private void updateAllCharts() {
             equipmentStateChartPanel.setChart(createEquipmentStateChart());
@@ -190,8 +169,9 @@ public class MediaStaffFrame extends JFrame {
          */
         private JFreeChart createEquipmentStateChart() {
             EquipmentController ec = new EquipmentController();
-            // Use the current user's role for filtering. (Assuming getAllEquipment() accepts a role.)
+            // Retrieve all equipment filtered by the user's role.
             List<Equipment> equipments = ec.getAllEquipment(loggedInUser.getRole());
+            // Count each state.
             Map<String, Integer> stateCounts = new HashMap<>();
             for (Equipment eq : equipments) {
                 String state = eq.getState();
@@ -199,16 +179,34 @@ public class MediaStaffFrame extends JFrame {
                     stateCounts.put(state, stateCounts.getOrDefault(state, 0) + 1);
                 }
             }
+            // Create a dataset with one common category "Equipment" and four series for each state.
             DefaultCategoryDataset dataset = new DefaultCategoryDataset();
-            for (Map.Entry<String, Integer> entry : stateCounts.entrySet()) {
-                dataset.addValue(entry.getValue(), "Equipment", entry.getKey());
-            }
+            dataset.addValue(stateCounts.getOrDefault("New", 0), "New", "Equipment");
+            dataset.addValue(stateCounts.getOrDefault("Good", 0), "Good", "Equipment");
+            dataset.addValue(stateCounts.getOrDefault("Fair", 0), "Fair", "Equipment");
+            dataset.addValue(stateCounts.getOrDefault("Poor", 0), "Poor", "Equipment");
+
+            // Create the bar chart.
             JFreeChart chart = ChartFactory.createBarChart("Equipment States", "State", "Count", dataset);
-            // Enable data labels on the bar chart:
+
+            // Enable and display data labels.
             chart.getCategoryPlot().getRenderer().setDefaultItemLabelGenerator(new org.jfree.chart.labels.StandardCategoryItemLabelGenerator());
             chart.getCategoryPlot().getRenderer().setDefaultItemLabelsVisible(true);
+
+            // Set chart and plot background.
+            chart.setBackgroundPaint(Color.WHITE);
+            chart.getCategoryPlot().setBackgroundPaint(Color.WHITE);
+            chart.getCategoryPlot().setOutlineVisible(false);
+
+            // Set different colors for each series.
+            chart.getCategoryPlot().getRenderer().setSeriesPaint(0, Color.BLUE);    // "New"
+            chart.getCategoryPlot().getRenderer().setSeriesPaint(1, Color.GREEN);   // "Good"
+            chart.getCategoryPlot().getRenderer().setSeriesPaint(2, Color.ORANGE);  // "Fair"
+            chart.getCategoryPlot().getRenderer().setSeriesPaint(3, Color.RED);     // "Poor"
+
             return chart;
         }
+
 
         /**
          * Creates a pie chart comparing the count of checked-out equipment against available equipment.
@@ -228,6 +226,17 @@ public class MediaStaffFrame extends JFrame {
             dataset.setValue("Not Checked Out", notCheckedOut);
             JFreeChart chart = ChartFactory.createPieChart("Equipment Checked Out", dataset, true, true, false);
             // (You can add a StandardPieSectionLabelGenerator here for more detailed labels.)
+
+            // Set chart and plot background to white.
+            chart.setBackgroundPaint(Color.WHITE);
+            // Get the plot as a PiePlot and set its properties.
+            org.jfree.chart.plot.PiePlot plot = (org.jfree.chart.plot.PiePlot) chart.getPlot();
+            plot.setBackgroundPaint(Color.WHITE);
+            plot.setOutlineVisible(false);
+
+            // To set section colors
+            plot.setSectionPaint("Checked Out", Color.GREEN);
+            plot.setSectionPaint("Not Checked Out", Color.YELLOW);
             return chart;
         }
 
@@ -258,6 +267,15 @@ public class MediaStaffFrame extends JFrame {
             JFreeChart chart = ChartFactory.createBarChart("Reservations Status", "Status", "Count", dataset);
             chart.getCategoryPlot().getRenderer().setDefaultItemLabelGenerator(new org.jfree.chart.labels.StandardCategoryItemLabelGenerator());
             chart.getCategoryPlot().getRenderer().setDefaultItemLabelsVisible(true);
+
+            // Set chart and plot background to white.
+            chart.setBackgroundPaint(Color.WHITE);
+            chart.getCategoryPlot().setBackgroundPaint(Color.WHITE);
+            chart.getCategoryPlot().setOutlineVisible(false);
+
+            // Change the bar color for series 0 to orange.
+            chart.getCategoryPlot().getRenderer().setSeriesPaint(0, Color.YELLOW);
+            chart.getCategoryPlot().getRenderer().setSeriesPaint(1, Color.GREEN);
             return chart;
         }
 
@@ -283,6 +301,14 @@ public class MediaStaffFrame extends JFrame {
             JFreeChart chart = ChartFactory.createBarChart("User Reservations", "User", "Count", dataset);
             chart.getCategoryPlot().getRenderer().setDefaultItemLabelGenerator(new org.jfree.chart.labels.StandardCategoryItemLabelGenerator());
             chart.getCategoryPlot().getRenderer().setDefaultItemLabelsVisible(true);
+
+            // Set chart and plot background to white.
+            chart.setBackgroundPaint(Color.WHITE);
+            chart.getCategoryPlot().setBackgroundPaint(Color.WHITE);
+            chart.getCategoryPlot().setOutlineVisible(false);
+
+            // Change the bar color for series 0 to orange.
+            chart.getCategoryPlot().getRenderer().setSeriesPaint(0, Color.GREEN);
             return chart;
         }
     }
@@ -302,6 +328,11 @@ public class MediaStaffFrame extends JFrame {
             gridBagConstraints.insets = new Insets(10, 10, 10, 10);
             gridBagConstraints.fill = GridBagConstraints.HORIZONTAL;
 
+            Font bigFont = new Font("SansSerif", Font.PLAIN, 16);
+
+
+
+
             JLabel labelUserId = new JLabel("User ID:");
             JTextField textFieldUserId = new JTextField(user.getUserId(), 20);
             textFieldUserId.setEditable(false);
@@ -318,23 +349,29 @@ public class MediaStaffFrame extends JFrame {
             JTextField textFieldRole = new JTextField(user.getRole(), 20);
             textFieldRole.setEditable(false);
 
-            gridBagConstraints.gridx = 0;
-            gridBagConstraints.gridy = 0;
+            // For each label and text field:
+            labelUserId.setFont(bigFont);
+            textFieldUserId.setFont(bigFont);
+            labelName.setFont(bigFont);
+            textFieldName.setFont(bigFont);
+            labelEmail.setFont(bigFont);
+            textFieldEmail.setFont(bigFont);
+            labelRole.setFont(bigFont);
+            textFieldRole.setFont(bigFont);
+
+            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 0;
             add(labelUserId, gridBagConstraints);
             gridBagConstraints.gridx = 1;
             add(textFieldUserId, gridBagConstraints);
-            gridBagConstraints.gridx = 0;
-            gridBagConstraints.gridy = 1;
+            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 1;
             add(labelName, gridBagConstraints);
             gridBagConstraints.gridx = 1;
             add(textFieldName, gridBagConstraints);
-            gridBagConstraints.gridx = 0;
-            gridBagConstraints.gridy = 2;
+            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 2;
             add(labelEmail, gridBagConstraints);
             gridBagConstraints.gridx = 1;
             add(textFieldEmail, gridBagConstraints);
-            gridBagConstraints.gridx = 0;
-            gridBagConstraints.gridy = 3;
+            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 3;
             add(labelRole, gridBagConstraints);
             gridBagConstraints.gridx = 1;
             add(textFieldRole, gridBagConstraints);
@@ -503,8 +540,8 @@ public class MediaStaffFrame extends JFrame {
          * @throws DatabaseOperationException if a database error occurs.
          */
         private void loadViewLecturers() throws DatabaseOperationException {
-            final UserController uc = new UserController();
-            final List<User> users = uc.getAllUsers("MediaStaff");
+            final UserController userController = new UserController();
+            final List<User> users = userController.getLecturersAndStudents();
             String[] columnNames = {"User ID", "Email", "Name", "Role", "Department"};
             DefaultTableModel model = new DefaultTableModel(columnNames, 0){
                 @Override
@@ -537,8 +574,8 @@ public class MediaStaffFrame extends JFrame {
          * @throws DatabaseOperationException if a database error occurs.
          */
         private void loadViewStudents() throws DatabaseOperationException {
-            final UserController uc = new UserController();
-            final List<User> users = uc.getAllUsers("MediaStaff");
+            final UserController userController = new UserController();
+            final List<User> users = userController.getLecturersAndStudents();
             String[] columnNames = {"Student ID", "Email", "Name", "Role", "Department", "Course", "Year"};
             DefaultTableModel model = new DefaultTableModel(columnNames, 0){
                 @Override

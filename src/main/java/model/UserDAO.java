@@ -132,7 +132,12 @@ public class UserDAO {
      * @throws DatabaseOperationException if a database error occurs.
      */
     public List<User> getLecturersAndStudents() throws DatabaseOperationException {
-        String query = "SELECT user_id, email, name, role FROM users WHERE role IN ('Lecturer', 'Student')";
+        String query = "SELECT u.user_id, u.email, u.role, u.name, " +
+                "s.course, s.department AS student_department, s.year, " +
+                "l.department AS lecturer_department " +
+                "FROM users u " +
+                "LEFT JOIN students s ON u.user_id = s.student_id " +
+                "LEFT JOIN lecturers l ON u.user_id = l.lecturer_id";
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
@@ -149,6 +154,14 @@ public class UserDAO {
                 user.setEmail(rs.getString("email"));
                 user.setName(rs.getString("name"));
                 user.setRole(rs.getString("role"));
+
+                if ("Student".equalsIgnoreCase(user.getRole())) {
+                    user.setCourse(rs.getString("course"));
+                    user.setDepartment(rs.getString("student_department"));
+                    user.setYear(rs.getObject("year") != null ? rs.getInt("year") : null);
+                } else if ("Lecturer".equalsIgnoreCase(user.getRole())) {
+                    user.setDepartment(rs.getString("lecturer_department"));
+                }
                 lecturersAndStudents.add(user);
             }
         } catch (SQLException e) {

@@ -49,6 +49,7 @@ public class AdminFrame extends JFrame {
         setSize(800, 600);
         setLocationRelativeTo(null);
         setIconImage(new ImageIcon(getClass().getResource("/view/icons/college.png")).getImage());
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
         JPanel mainPanel = new JPanel(new BorderLayout());
         tabbedPane = new JTabbedPane();
 
@@ -177,8 +178,9 @@ public class AdminFrame extends JFrame {
          */
         private JFreeChart createEquipmentStateChart() {
             EquipmentController ec = new EquipmentController();
-            // Use the current user's role for filtering. (Assuming getAllEquipment() accepts a role.)
+            // Retrieve all equipment filtered by the user's role.
             List<Equipment> equipments = ec.getAllEquipment(loggedInUser.getRole());
+            // Count each state.
             Map<String, Integer> stateCounts = new HashMap<>();
             for (Equipment eq : equipments) {
                 String state = eq.getState();
@@ -186,23 +188,34 @@ public class AdminFrame extends JFrame {
                     stateCounts.put(state, stateCounts.getOrDefault(state, 0) + 1);
                 }
             }
+            // Create a dataset with one common category "Equipment" and four series for each state.
             DefaultCategoryDataset dataset = new DefaultCategoryDataset();
-            for (Map.Entry<String, Integer> entry : stateCounts.entrySet()) {
-                dataset.addValue(entry.getValue(), "Equipment", entry.getKey());
-            }
+            dataset.addValue(stateCounts.getOrDefault("New", 0), "New", "Equipment");
+            dataset.addValue(stateCounts.getOrDefault("Good", 0), "Good", "Equipment");
+            dataset.addValue(stateCounts.getOrDefault("Fair", 0), "Fair", "Equipment");
+            dataset.addValue(stateCounts.getOrDefault("Poor", 0), "Poor", "Equipment");
+
+            // Create the bar chart.
             JFreeChart chart = ChartFactory.createBarChart("Equipment States", "State", "Count", dataset);
-            // Enable data labels on the bar chart:
+
+            // Enable and display data labels.
             chart.getCategoryPlot().getRenderer().setDefaultItemLabelGenerator(new org.jfree.chart.labels.StandardCategoryItemLabelGenerator());
             chart.getCategoryPlot().getRenderer().setDefaultItemLabelsVisible(true);
-            // Set chart and plot background to white.
+
+            // Set chart and plot background.
             chart.setBackgroundPaint(Color.WHITE);
             chart.getCategoryPlot().setBackgroundPaint(Color.WHITE);
             chart.getCategoryPlot().setOutlineVisible(false);
 
-            // Change the bar color for series 0 to orange.
-            chart.getCategoryPlot().getRenderer().setSeriesPaint(0, Color.DARK_GRAY);
+            // Set different colors for each series.
+            chart.getCategoryPlot().getRenderer().setSeriesPaint(0, Color.BLUE);    // "New"
+            chart.getCategoryPlot().getRenderer().setSeriesPaint(1, Color.GREEN);   // "Good"
+            chart.getCategoryPlot().getRenderer().setSeriesPaint(2, Color.ORANGE);  // "Fair"
+            chart.getCategoryPlot().getRenderer().setSeriesPaint(3, Color.RED);     // "Poor"
+
             return chart;
         }
+
 
         /**
          * Creates a pie chart comparing the count of checked-out equipment against available equipment.
@@ -230,9 +243,9 @@ public class AdminFrame extends JFrame {
             plot.setBackgroundPaint(Color.WHITE);
             plot.setOutlineVisible(false);
 
-            // To set section colors (if needed), use setSectionPaint. For example:
-            plot.setSectionPaint("Checked Out", Color.DARK_GRAY);
-            plot.setSectionPaint("Not Checked Out", Color.GREEN);
+            // To set section colors
+            plot.setSectionPaint("Checked Out", Color.GREEN);
+            plot.setSectionPaint("Not Checked Out", Color.YELLOW);
             return chart;
         }
 
@@ -270,7 +283,8 @@ public class AdminFrame extends JFrame {
             chart.getCategoryPlot().setOutlineVisible(false);
 
             // Change the bar color for series 0 to orange.
-            chart.getCategoryPlot().getRenderer().setSeriesPaint(0, Color.DARK_GRAY);
+            chart.getCategoryPlot().getRenderer().setSeriesPaint(0, Color.YELLOW);
+            chart.getCategoryPlot().getRenderer().setSeriesPaint(1, Color.GREEN);
             return chart;
         }
 
@@ -303,7 +317,7 @@ public class AdminFrame extends JFrame {
             chart.getCategoryPlot().setOutlineVisible(false);
 
             // Change the bar color for series 0 to orange.
-            chart.getCategoryPlot().getRenderer().setSeriesPaint(0, Color.DARK_GRAY);
+            chart.getCategoryPlot().getRenderer().setSeriesPaint(0, Color.GREEN);
             return chart;
         }
     }
