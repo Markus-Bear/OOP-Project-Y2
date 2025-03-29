@@ -384,14 +384,17 @@ public class MediaStaffFrame extends JFrame {
      * @param text the button label.
      * @return the styled JButton.
      */
-    private JButton createMenuItem(String text) {
+    private JButton createMenuItem(String text, String iconPath) {
         JButton button = new JButton(text);
         // Force a basic UI that respects our background color changes.
         button.setUI(new BasicButtonUI());
 
+        if (iconPath != null) {
+            button.setIcon(new ImageIcon(getClass().getResource(iconPath)));
+        }
+
         button.setAlignmentX(Component.CENTER_ALIGNMENT);
-        button.setPreferredSize(new Dimension(0, 50));
-        button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+        button.setPreferredSize(new Dimension(0,100));
         button.setBackground(Color.DARK_GRAY);
         button.setForeground(Color.WHITE);
         button.setFocusPainted(true);
@@ -400,6 +403,8 @@ public class MediaStaffFrame extends JFrame {
         button.setOpaque(true);
         button.setRolloverEnabled(true);
         button.setBorderPainted(false);
+        button.setVerticalTextPosition(SwingConstants.BOTTOM);
+        button.setHorizontalTextPosition(SwingConstants.CENTER);
 
         // Define colors for different states.
         final Color defaultColor = Color.DARK_GRAY;
@@ -448,15 +453,15 @@ public class MediaStaffFrame extends JFrame {
             sidebar.setBackground(Color.DARK_GRAY);
 
 
-            JButton buttonViewAllUsers = createMenuItem("View All Users");
-            JButton buttonViewLecturers = createMenuItem("View Lecturers");
-            JButton buttonViewStudents = createMenuItem("View Students");
+            JButton buttonViewAllUsers = createMenuItem("View All Users", "/view/icons/view-user.png");
+            JButton buttonViewLecturers = createMenuItem("View Lecturers", "/view/icons/view-user.png");
+            JButton buttonViewStudents = createMenuItem("View Students", "/view/icons/view-user.png");
 
-            sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
+            sidebar.add(Box.createRigidArea(new Dimension(0, 150)));
             sidebar.add(buttonViewAllUsers);
-            sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
+            sidebar.add(Box.createRigidArea(new Dimension(0, 100)));
             sidebar.add(buttonViewLecturers);
-            sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
+            sidebar.add(Box.createRigidArea(new Dimension(0, 100)));
             sidebar.add(buttonViewStudents);
 
             // Create content panel (initially with a placeholder)
@@ -625,13 +630,14 @@ public class MediaStaffFrame extends JFrame {
             sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
             sidebar.setBackground(Color.DARK_GRAY);
 
-            JButton buttonViewAllEquipment = createMenuItem("View All Equipment");
-            JButton buttonViewByType = createMenuItem("View Equipment by Type");
-            JButton buttonUpdateEquipmentState = createMenuItem("Update Equipment State");
+            JButton buttonViewAllEquipment = createMenuItem("View All Equipment", "/view/icons/view.png");
+            JButton buttonViewByType = createMenuItem("View Equipment by Type", "/view/icons/view.png");
+            JButton buttonUpdateEquipmentState = createMenuItem("Update Equipment State", "/view/icons/update.png");
+            sidebar.add(Box.createRigidArea(new Dimension(0, 150)));
             sidebar.add(buttonViewAllEquipment);
-            sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
+            sidebar.add(Box.createRigidArea(new Dimension(0, 100)));
             sidebar.add(buttonViewByType);
-            sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
+            sidebar.add(Box.createRigidArea(new Dimension(0, 100)));
             sidebar.add(buttonUpdateEquipmentState);
 
 
@@ -682,7 +688,12 @@ public class MediaStaffFrame extends JFrame {
             EquipmentController equipmentController = new EquipmentController();
             List<Equipment> equipments = equipmentController.getAllEquipment("MediaStaff");
             String[] colNames = {"Equipment ID", "Name", "Type", "Description", "Status", "State"};
-            DefaultTableModel model = new DefaultTableModel(colNames, 0);
+            DefaultTableModel model = new DefaultTableModel(colNames, 0){
+                @Override
+                public boolean isCellEditable(int row, int column){
+                    return false;
+                }
+            };
             for (Equipment equipment : equipments) {
                 Object[] row = { equipment.getEquipmentId(), equipment.getName(), equipment.getType(), equipment.getDescription(), equipment.getStatus(), equipment.getState() };
                 model.addRow(row);
@@ -713,7 +724,12 @@ public class MediaStaffFrame extends JFrame {
             EquipmentController equipmentController = new EquipmentController();
             List<Equipment> equipments = equipmentController.getEquipmentByType(type, loggedInUser.getRole());
             String[] columnNames = {"Equipment ID", "Name", "Type", "Description", "Status", "State"};
-            DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+            DefaultTableModel model = new DefaultTableModel(columnNames, 0){
+                @Override
+                public boolean isCellEditable(int row, int column){
+                    return false;
+                }
+            };
             for (Equipment equipment : equipments) {
                 Object[] row = { equipment.getEquipmentId(), equipment.getName(), equipment.getType(), equipment.getDescription(), equipment.getStatus(), equipment.getState() };
                 model.addRow(row);
@@ -742,7 +758,12 @@ public class MediaStaffFrame extends JFrame {
             List<Equipment> equipments = equipmentController.getAllEquipment("MediaStaff");
             JPanel updatePanel = new JPanel(new BorderLayout());
             String[] columnNames = {"Equipment ID", "Name", "Type", "Description", "Status", "State"};
-            final DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+            final DefaultTableModel model = new DefaultTableModel(columnNames, 0){
+                @Override
+                public boolean isCellEditable(int row, int column){
+                    return false;
+                }
+            };
             for (Equipment equipment : equipments) {
                 if ("Available".equalsIgnoreCase(equipment.getStatus())) {  // Only include available equipment
                     Object[] row = { equipment.getEquipmentId(), equipment.getName(), equipment.getType(),
@@ -884,14 +905,15 @@ public class MediaStaffFrame extends JFrame {
             sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
             sidebar.setBackground(Color.DARK_GRAY);
 
-            JButton buttonApproval = createMenuItem("Approve/Reject Reservations");
-            JButton buttonCheckOut = createMenuItem("Check-Out Equipment");
-            JButton buttonCheckIn = createMenuItem("Check-In Equipment");
+            JButton buttonApproval = createMenuItem("Approve/Reject Reservations","/view/icons/reservations.png");
+            JButton buttonCheckOut = createMenuItem("Check-Out Equipment","/view/icons/check-out.png");
+            JButton buttonCheckIn = createMenuItem("Check-In Equipment","/view/icons/check-in.png");
 
+            sidebar.add(Box.createRigidArea(new Dimension(0,150)));
             sidebar.add(buttonApproval);
-            sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
+            sidebar.add(Box.createRigidArea(new Dimension(0,100)));
             sidebar.add(buttonCheckOut);
-            sidebar.add(Box.createRigidArea(new Dimension(0, 50)));
+            sidebar.add(Box.createRigidArea(new Dimension(0,100)));
             sidebar.add(buttonCheckIn);
 
             contentPanel = new JPanel(new BorderLayout());

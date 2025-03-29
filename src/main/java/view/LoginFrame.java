@@ -1,153 +1,154 @@
 package view;
 
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.JLabel;
-import javax.swing.JTextField;
-import javax.swing.JPasswordField;
-import javax.swing.JButton;
-import javax.swing.JOptionPane;
-import java.awt.GridBagLayout;
-import java.awt.GridBagConstraints;
-import java.awt.Insets;
-import java.awt.Font;
+import javax.swing.*;
+import java.awt.Component;
 import java.awt.Color;
+import java.awt.Font;
+import java.awt.Dimension;
 import controller.LoginManager;
 import model.User;
 import exception.AuthenticationException;
 import exception.DatabaseOperationException;
 import exception.RoleAccessException;
 
-/**
- * The LoginFrame class creates a login window for the Media Equipment Rental System.
- * It collects the user's email and password, then attempts to authenticate the user.
- * If authentication is successful, the corresponding main GUI is launched.
- */
+
 public class LoginFrame extends JFrame {
     private JTextField emailTextField;
     private JPasswordField passwordField;
     private JButton loginButton;
 
-    /**
-     * Constructs a new LoginFrame, sets up the GUI components and layout.
-     */
     public LoginFrame() {
         setTitle("Log in");
-        setSize(400, 250);
+        setSize(500, 700);
+        setResizable(false);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
+        // Main panel using a dark gray background color.
+        JPanel mainPanel = new JPanel();
+        mainPanel.setBackground(Color.LIGHT_GRAY);
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
 
-        // Build panel with GridBagLayout to center components.
-        JPanel panel = new JPanel(new GridBagLayout());
-        GridBagConstraints gridBagConstraint = new GridBagConstraints();
-        gridBagConstraint.insets = new Insets(10, 10, 10, 10);
-        gridBagConstraint.fill = GridBagConstraints.HORIZONTAL;
+        // --- TOP ICON (replace "/view/icons/SETU_logo.png" with your actual path) ---
+        JLabel iconLabel = new JLabel(new ImageIcon(getClass().getResource("/view/icons/SETU_logo.png")));
+        iconLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        mainPanel.add(Box.createVerticalStrut(20));  // top spacing
+        mainPanel.add(iconLabel);
 
-        // Title label.
-        JLabel titleLabel = new JLabel("Log in");
+        // --- TITLE & SUBTITLE ---
+        JLabel titleLabel = new JLabel("SETU Media Equipment Rental System");
         titleLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
-        gridBagConstraint.gridx = 0;
-        gridBagConstraint.gridy = 0;
-        gridBagConstraint.gridwidth = 2;
-        gridBagConstraint.anchor = GridBagConstraints.CENTER;
-        panel.add(titleLabel, gridBagConstraint);
+        titleLabel.setForeground(new Color(0x435465));
+        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        mainPanel.add(Box.createVerticalStrut(10));
+        mainPanel.add(titleLabel);
 
-        // Reset for fields.
-        gridBagConstraint.gridwidth = 1;
-        gridBagConstraint.anchor = GridBagConstraints.LINE_END;
+        JLabel subTitleLabel = new JLabel("Allowing lecturers and students to rent equipment for projects.");
+        subTitleLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        subTitleLabel.setForeground(new Color(0x435465));
+        subTitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        mainPanel.add(subTitleLabel);
 
-        // Email label and field.
-        JLabel emailLabel = new JLabel("Email: ");
-        gridBagConstraint.gridx = 0;
-        gridBagConstraint.gridy = 1;
-        panel.add(emailLabel, gridBagConstraint);
+        // --- CREDENTIALS PANEL (username & password fields) ---
+        JPanel credsPanel = new JPanel();
+        credsPanel.setOpaque(false); // Make background transparent so mainPanel shows through
+        credsPanel.setLayout(new BoxLayout(credsPanel, BoxLayout.Y_AXIS));
+        credsPanel.setMaximumSize(new Dimension(300, 150)); // Limit width
+        credsPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
+        Font labelFont = new Font("SansSerif", Font.BOLD, 18);
+        Font fieldFont = new Font("SansSerif", Font.PLAIN, 18);
+        // "Username or Email Address" label
+        JLabel emailLabel = new JLabel("Email Address");
+        emailLabel.setForeground(new Color(0x435465));
+        emailLabel.setFont(labelFont);
+        credsPanel.add(Box.createVerticalStrut(10));
+        credsPanel.add(emailLabel);
+
+        // Email text field
         emailTextField = new JTextField(20);
-        gridBagConstraint.gridx = 1;
-        gridBagConstraint.gridy = 1;
-        gridBagConstraint.anchor = GridBagConstraints.LINE_START;
-        panel.add(emailTextField, gridBagConstraint);
+        emailTextField.setFont(fieldFont);
+        credsPanel.add(emailTextField);
 
-        // Password label and field.
-        JLabel passwordLabel = new JLabel("Password: ");
-        gridBagConstraint.gridx = 0;
-        gridBagConstraint.gridy = 2;
-        gridBagConstraint.anchor = GridBagConstraints.LINE_END;
-        panel.add(passwordLabel, gridBagConstraint);
+        // "Password" label
+        JLabel passwordLabel = new JLabel("Password");
+        passwordLabel.setForeground(new Color(0x435465));
+        passwordLabel.setFont(labelFont);
+        credsPanel.add(Box.createVerticalStrut(10));
+        credsPanel.add(passwordLabel);
 
+        // Password field
         passwordField = new JPasswordField(20);
-        gridBagConstraint.gridx = 1;
-        gridBagConstraint.gridy = 2;
-        gridBagConstraint.anchor = GridBagConstraints.LINE_START;
-        panel.add(passwordField, gridBagConstraint);
+        passwordField.setFont(fieldFont);
+        credsPanel.add(passwordField);
 
-        // Log in button.
-        loginButton = new JButton("Log in");
+        mainPanel.add(Box.createVerticalStrut(20));
+        mainPanel.add(credsPanel);
+
+        // --- LOG IN BUTTON ---
+        loginButton = new JButton("Log In");
+        loginButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         loginButton.setBackground(Color.DARK_GRAY);
         loginButton.setForeground(Color.WHITE);
-        gridBagConstraint.gridx = 0;
-        gridBagConstraint.gridy = 3;
-        gridBagConstraint.gridwidth = 2;
-        gridBagConstraint.anchor = GridBagConstraints.CENTER;
-        panel.add(loginButton, gridBagConstraint);
+        loginButton.setFocusPainted(false);
+        loginButton.setFont(new Font("SansSerif", Font.BOLD, 16));
+        loginButton.setPreferredSize(new Dimension(300, 40));
+        loginButton.setMaximumSize(new Dimension(300, 40));
+        mainPanel.add(Box.createVerticalStrut(10));
+        mainPanel.add(loginButton);
 
-        // Action listeners for the login button and password field.
+        // Removed the "Lost your password?" label
+
+        getContentPane().add(mainPanel);
+
+        // Action listeners for login
         loginButton.addActionListener(e -> {
             try {
                 performLogin();
-            } catch (DatabaseOperationException ex) {
-                throw new RuntimeException(ex);
-            } catch (RoleAccessException ex) {
-                throw new RuntimeException(ex);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Incorrect Log In details. Please try again.",
+                        "Login Error", JOptionPane.ERROR_MESSAGE
+                );
             }
         });
         passwordField.addActionListener(e -> {
             try {
                 performLogin();
-            } catch (DatabaseOperationException ex) {
-                throw new RuntimeException(ex);
-            } catch (RoleAccessException ex) {
-                throw new RuntimeException(ex);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Incorrect Log In details. Please try again.",
+                        "Login Error", JOptionPane.ERROR_MESSAGE
+                );
             }
         });
-
-        add(panel);
     }
 
-    /**
-     * Attempts to authenticate the user using the entered email and password.
-     * Displays error messages via dialogs if authentication fails or if inputs are invalid.
-     *
-     * @throws DatabaseOperationException if there is a database error during authentication.
-     * @throws RoleAccessException        if the user's role is not authorized.
-     */
     private void performLogin() throws DatabaseOperationException, RoleAccessException {
         String email = emailTextField.getText().trim();
         String password = new String(passwordField.getPassword()).trim();
 
         if (email.isEmpty() || password.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Email or password cannot be empty.", "Login Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Email or password cannot be empty.",
+                    "Login Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         try {
             LoginManager loginManager = new LoginManager();
             User user = loginManager.loginUser(email, password);
-            JOptionPane.showMessageDialog(this, "Login successful! Welcome, " + user.getName(), "Login", JOptionPane.INFORMATION_MESSAGE);
             // Launch appropriate main GUI based on the user's role.
             if (user.getRole().equalsIgnoreCase("Admin")) {
                 new AdminFrame(user).setVisible(true);
             } else if (user.getRole().equalsIgnoreCase("MediaStaff")) {
                 new MediaStaffFrame(user).setVisible(true);
             } else {
-                // Extend for other roles as needed.
-                JOptionPane.showMessageDialog(this, "Only Admin and Media Staff GUI is implemented in this version.", "Info", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(this,
+                        "Only Admin and Media Staff GUI is implemented in this version.",
+                        "Info", JOptionPane.INFORMATION_MESSAGE);
             }
             dispose();
         } catch (AuthenticationException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Login Error", JOptionPane.ERROR_MESSAGE);
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Unexpected error: " + ex.getMessage(), "Login Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Incorrect Log In details. Please try again.",
+                    "Login Error", JOptionPane.ERROR_MESSAGE
+            );
         }
     }
 }

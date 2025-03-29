@@ -5,7 +5,6 @@ import model.User;
 import model.Equipment;
 import model.Reservation;
 import exception.DatabaseOperationException;
-
 import java.awt.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -36,6 +35,8 @@ import org.jfree.data.general.DefaultPieDataset;
 public class AdminFrame extends JFrame {
     private User loggedInUser;
     private JTabbedPane tabbedPane;
+    private Font bigFont = new Font("SansSerif", Font.PLAIN, 16);
+    private Font boldFont = new Font("SansSerif", Font.BOLD, 16);
 
     /**
      * Constructs an AdminFrame for the given user.
@@ -49,43 +50,86 @@ public class AdminFrame extends JFrame {
         setSize(800, 600);
         setLocationRelativeTo(null);
         setIconImage(new ImageIcon(getClass().getResource("/view/icons/college.png")).getImage());
+        // Open in full screen
         setExtendedState(JFrame.MAXIMIZED_BOTH);
+
         JPanel mainPanel = new JPanel(new BorderLayout());
+
+        // Create a tabbed pane with custom UI
         tabbedPane = new JTabbedPane();
-
-        // Creates and adds tabs.
-        tabbedPane.addTab("Home", new HomePanel(loggedInUser));
-        tabbedPane.addTab("View Profile", new ViewProfilePanel(loggedInUser));
-        tabbedPane.addTab("User Management", new UserManagementPanel(loggedInUser.getUserId()));
-        tabbedPane.addTab("Equipment Management", new EquipmentManagementPanel(loggedInUser.getUserId()));
-        tabbedPane.addTab("Reservations Management", new ReservationsManagementPanel(loggedInUser.getUserId()));
-
-        tabbedPane.setBackground(Color.DARK_GRAY);
-        tabbedPane.setForeground(Color.WHITE);
-
-
-        for(int i= 0; i < tabbedPane.getTabCount(); i++) {
-            tabbedPane.setBackgroundAt(i, Color.DARK_GRAY);
-            tabbedPane.setForegroundAt(i, Color.WHITE);
-        }
-        // Adds a ChangeListener to refresh any tab that implements the  Refreshable interface.
-        tabbedPane.addChangeListener(new ChangeListener() {
+        tabbedPane.setBorder(BorderFactory.createEmptyBorder());
+        tabbedPane.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
+        tabbedPane.setUI(new javax.swing.plaf.basic.BasicTabbedPaneUI() {
             @Override
-            public void stateChanged(ChangeEvent e) {
-                Component selected = tabbedPane.getSelectedComponent();
-                if (selected instanceof Refreshable) {
-                    try {
-                        ((Refreshable) selected).refresh();
-                    } catch (DatabaseOperationException ex) {
-                        throw new RuntimeException(ex);
-                    }
+            protected void paintTabBackground(Graphics g, int tabPlacement,
+                                              int tabIndex, int x, int y, int w, int h, boolean isSelected) {
+                // Use dark gray for selected, light gray for others.
+                g.setColor(isSelected ? Color.DARK_GRAY : Color.LIGHT_GRAY);
+                g.fillRect(x, y, w, h);
+            }
+
+            @Override
+            protected void paintText(Graphics g, int tabPlacement, Font font,
+                                     FontMetrics metrics, int tabIndex, String title,
+                                     Rectangle textRect, boolean isSelected) {
+                g.setFont(font);
+                // White text for selected tab, black for unselected.
+                g.setColor(isSelected ? Color.WHITE : Color.BLACK);
+                g.drawString(title, textRect.x, textRect.y + metrics.getAscent());
+            }
+
+
+            @Override
+            protected void paintFocusIndicator(Graphics g, int tabPlacement, Rectangle[] rects,
+                                               int tabIndex, Rectangle iconRect, Rectangle textRect,
+                                               boolean isSelected) {
+                // Do nothing to remove the dotted focus outline
+            }
+
+            @Override
+            protected void paintContentBorder(Graphics g, int tabPlacement, int selectedIndex) {
+                // Do nothing to remove the “blue border” around the content area
+            }
+
+            @Override
+            protected int calculateTabHeight(int tabPlacement, int tabIndex, int fontHeight) {
+                // Increase tab height to accommodate a 64px icon plus text.
+                return 60; // adjust as needed
+            }
+
+            @Override
+            protected int calculateTabWidth(int tabPlacement, int tabIndex, FontMetrics metrics) {
+                int totalWidth = tabPane.getWidth();
+                int tabCount = tabPane.getTabCount();
+                if (tabCount > 0 && totalWidth > 0) {
+                    // Divide the total available width equally among all tabs.
+                    return totalWidth / tabCount;
                 }
+                // Fallback if width is not available yet.
+                return super.calculateTabWidth(tabPlacement, tabIndex, metrics);
             }
         });
 
+        // Add tabs with icons.
+        tabbedPane.addTab("Home",
+                new ImageIcon(getClass().getResource("/view/icons/home.png")),
+                new HomePanel(loggedInUser));
+        tabbedPane.addTab("View Profile",
+                new ImageIcon(getClass().getResource("/view/icons/profile.png")),
+                new ViewProfilePanel(loggedInUser));
+        tabbedPane.addTab("User Management",
+                new ImageIcon(getClass().getResource("/view/icons/user.png")),
+                new UserManagementPanel(loggedInUser.getUserId()));
+        tabbedPane.addTab("Equipment Management",
+                new ImageIcon(getClass().getResource("/view/icons/equipment.png")),
+                new EquipmentManagementPanel(loggedInUser.getUserId()));
+        tabbedPane.addTab("Reservations Management",
+                new ImageIcon(getClass().getResource("/view/icons/reservation.png")),
+                new ReservationsManagementPanel(loggedInUser.getUserId()));
+
         mainPanel.add(tabbedPane, BorderLayout.CENTER);
 
-        // Bottom panel with a log-out button at the bottom right.
+        // Bottom panel with a log-out button.
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton logoutButton = new JButton("Log out");
         logoutButton.setBackground(Color.DARK_GRAY);
@@ -101,6 +145,21 @@ public class AdminFrame extends JFrame {
         mainPanel.add(bottomPanel, BorderLayout.SOUTH);
 
         add(mainPanel);
+
+        // Add a change listener to refresh tabs that implement Refreshable.
+        tabbedPane.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                Component selected = tabbedPane.getSelectedComponent();
+                if (selected instanceof Refreshable) {
+                    try {
+                        ((Refreshable) selected).refresh();
+                    } catch (DatabaseOperationException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            }
+        });
     }
 
     // =========================
@@ -128,7 +187,7 @@ public class AdminFrame extends JFrame {
         public HomePanel(User user) {
             this.loggedInUser = user;
             // Use a (2 rows x 2 columns) GridLayout with 10px gaps.
-            setLayout(new GridLayout(2, 2, 10, 10));
+            setLayout(new GridLayout(2, 2, 2, 2));
             int chartSize = 300;
 
             // Equipment States Chart (Bar Chart)
@@ -177,9 +236,9 @@ public class AdminFrame extends JFrame {
          * @return a JFreeChart object representing the equipment states.
          */
         private JFreeChart createEquipmentStateChart() {
-            EquipmentController ec = new EquipmentController();
+            EquipmentController equipmentController= new EquipmentController();
             // Retrieve all equipment filtered by the user's role.
-            List<Equipment> equipments = ec.getAllEquipment(loggedInUser.getRole());
+            List<Equipment> equipments = equipmentController.getAllEquipment(loggedInUser.getRole());
             // Count each state.
             Map<String, Integer> stateCounts = new HashMap<>();
             for (Equipment eq : equipments) {
@@ -226,8 +285,8 @@ public class AdminFrame extends JFrame {
             CheckoutController cc = new CheckoutController();
             List<String> checkedOut = cc.getCheckedOutEquipment();
             int checkedOutCount = checkedOut.size();
-            EquipmentController ec = new EquipmentController();
-            List<Equipment> equipments = ec.getAllEquipment(loggedInUser.getRole());
+            EquipmentController equipmentController= new EquipmentController();
+            List<Equipment> equipments = equipmentController.getAllEquipment(loggedInUser.getRole());
             int total = equipments.size();
             int notCheckedOut = total - checkedOutCount;
             DefaultPieDataset dataset = new DefaultPieDataset();
@@ -255,9 +314,9 @@ public class AdminFrame extends JFrame {
          * @return a JFreeChart object representing reservation statuses.
          */
         private JFreeChart createReservationsStatusChart() {
-            ReservationController rc = new ReservationController();
+            ReservationController resController= new ReservationController();
             // Use the current user's ID to filter reservations.
-            List<Reservation> reservations = rc.getAllReservations(loggedInUser.getUserId());
+            List<Reservation> reservations = resController.getAllReservations(loggedInUser.getUserId());
             int pendingCount = 0;
             int approvedCount = 0;
             for (Reservation res : reservations) {
@@ -294,8 +353,8 @@ public class AdminFrame extends JFrame {
          * @return a JFreeChart object representing user reservations.
          */
         private JFreeChart createUserReservationsOverTimeChart() {
-            ReservationController rc = new ReservationController();
-            List<Reservation> reservations = rc.getAllReservations(loggedInUser.getUserId());
+            ReservationController resController= new ReservationController();
+            List<Reservation> reservations = resController.getAllReservations(loggedInUser.getUserId());
             Map<String, Integer> userCounts = new HashMap<>();
             for (Reservation res : reservations) {
                 String userId = res.getUserId();
@@ -337,11 +396,6 @@ public class AdminFrame extends JFrame {
             gridBagConstraints.insets = new Insets(10, 10, 10, 10);
             gridBagConstraints.fill = GridBagConstraints.HORIZONTAL;
 
-            Font bigFont = new Font("SansSerif", Font.PLAIN, 16);
-
-
-
-
             JLabel labelUserId = new JLabel("User ID:");
             JTextField textFieldUserId = new JTextField(user.getUserId(), 20);
             textFieldUserId.setEditable(false);
@@ -359,13 +413,13 @@ public class AdminFrame extends JFrame {
             textFieldRole.setEditable(false);
 
             // For each label and text field:
-            labelUserId.setFont(bigFont);
+            labelUserId.setFont(boldFont);
             textFieldUserId.setFont(bigFont);
-            labelName.setFont(bigFont);
+            labelName.setFont(boldFont);
             textFieldName.setFont(bigFont);
-            labelEmail.setFont(bigFont);
+            labelEmail.setFont(boldFont);
             textFieldEmail.setFont(bigFont);
-            labelRole.setFont(bigFont);
+            labelRole.setFont(boldFont);
             textFieldRole.setFont(bigFont);
 
             gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 0;
@@ -554,8 +608,63 @@ public class AdminFrame extends JFrame {
                 model.addRow(row);
             }
 
-
             JTable table = new JTable(model);
+            table.setFont(bigFont);
+            table.setRowHeight(20);
+            table.getTableHeader().setFont(boldFont);
+
+            JScrollPane scrollPane = new JScrollPane(table);
+
+            // Customised vertical scroll bar
+            scrollPane.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+                @Override
+                protected void configureScrollBarColors() {
+                    this.thumbColor = Color.DARK_GRAY; // The draggable thumb.
+                    this.trackColor = Color.GRAY;      // The background track.
+                }
+
+                @Override
+                protected JButton createDecreaseButton(int orientation) {
+                    JButton button = super.createDecreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+
+                @Override
+                protected JButton createIncreaseButton(int orientation) {
+                    JButton button = super.createIncreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+            });
+
+            // Customised horizontal scroll bar.
+            scrollPane.getHorizontalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+                @Override
+                protected void configureScrollBarColors() {
+                    this.thumbColor = Color.DARK_GRAY;
+                    this.trackColor = Color.GRAY;
+                }
+
+                @Override
+                protected JButton createDecreaseButton(int orientation) {
+                    JButton button = super.createDecreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+
+                @Override
+                protected JButton createIncreaseButton(int orientation) {
+                    JButton button = super.createIncreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+            });
+
 
             // Center text in some columns
             DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
@@ -563,7 +672,7 @@ public class AdminFrame extends JFrame {
             table.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
 
             contentPanel.removeAll();
-            contentPanel.add(new JScrollPane(table), BorderLayout.CENTER);
+            contentPanel.add(scrollPane, BorderLayout.CENTER);
             contentPanel.revalidate();
             contentPanel.repaint();
         }
@@ -803,6 +912,9 @@ public class AdminFrame extends JFrame {
                 model.addRow(row);
             }
             final JTable table = new JTable(model);
+            table.setFont(bigFont);
+            table.setRowHeight(20);
+            table.getTableHeader().setFont(boldFont);
 
             // Center text in some columns
             DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
@@ -810,6 +922,55 @@ public class AdminFrame extends JFrame {
             table.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
 
             JScrollPane scrollPane = new JScrollPane(table);
+            // Customised vertical scroll bar
+            scrollPane.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+                @Override
+                protected void configureScrollBarColors() {
+                    this.thumbColor = Color.DARK_GRAY; // The draggable thumb.
+                    this.trackColor = Color.GRAY;      // The background track.
+                }
+
+                @Override
+                protected JButton createDecreaseButton(int orientation) {
+                    JButton button = super.createDecreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+
+                @Override
+                protected JButton createIncreaseButton(int orientation) {
+                    JButton button = super.createIncreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+            });
+
+            // Customised horizontal scroll bar.
+            scrollPane.getHorizontalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+                @Override
+                protected void configureScrollBarColors() {
+                    this.thumbColor = Color.DARK_GRAY;
+                    this.trackColor = Color.GRAY;
+                }
+
+                @Override
+                protected JButton createDecreaseButton(int orientation) {
+                    JButton button = super.createDecreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+
+                @Override
+                protected JButton createIncreaseButton(int orientation) {
+                    JButton button = super.createIncreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+            });
             updatePanel.add(scrollPane, BorderLayout.CENTER);
             JButton updateUserButton = new JButton("Update Selected User");
             updateUserButton.setBackground(Color.LIGHT_GRAY);
@@ -1077,6 +1238,9 @@ public class AdminFrame extends JFrame {
                 model.addRow(row);
             }
             final JTable table = new JTable(model);
+            table.setFont(bigFont);
+            table.setRowHeight(20);
+            table.getTableHeader().setFont(boldFont);
 
             // Center text in some columns
             DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
@@ -1084,6 +1248,55 @@ public class AdminFrame extends JFrame {
             table.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
 
             JScrollPane scrollPane = new JScrollPane(table);
+            // Customised vertical scroll bar
+            scrollPane.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+                @Override
+                protected void configureScrollBarColors() {
+                    this.thumbColor = Color.DARK_GRAY; // The draggable thumb.
+                    this.trackColor = Color.GRAY;      // The background track.
+                }
+
+                @Override
+                protected JButton createDecreaseButton(int orientation) {
+                    JButton button = super.createDecreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+
+                @Override
+                protected JButton createIncreaseButton(int orientation) {
+                    JButton button = super.createIncreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+            });
+
+            // Customised horizontal scroll bar.
+            scrollPane.getHorizontalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+                @Override
+                protected void configureScrollBarColors() {
+                    this.thumbColor = Color.DARK_GRAY;
+                    this.trackColor = Color.GRAY;
+                }
+
+                @Override
+                protected JButton createDecreaseButton(int orientation) {
+                    JButton button = super.createDecreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+
+                @Override
+                protected JButton createIncreaseButton(int orientation) {
+                    JButton button = super.createIncreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+            });
             deletePanel.add(scrollPane, BorderLayout.CENTER);
             JButton deleteUserButton = new JButton("Delete Selected User");
             deleteUserButton.setBackground(Color.LIGHT_GRAY);
@@ -1229,14 +1442,80 @@ public class AdminFrame extends JFrame {
             }
             JTable table = new JTable(model);
 
+
+            // Adjust column widths as needed (in pixels). For example:
+            table.getColumnModel().getColumn(0).setPreferredWidth(120); // Equipment ID
+            table.getColumnModel().getColumn(1).setPreferredWidth(250); // Name
+            table.getColumnModel().getColumn(2).setPreferredWidth(100); // Type
+            table.getColumnModel().getColumn(3).setPreferredWidth(350); // Description
+            table.getColumnModel().getColumn(4).setPreferredWidth(100); // Status
+            table.getColumnModel().getColumn(5).setPreferredWidth(80);  // State
+
+            table.setFont(bigFont);
+            table.setRowHeight(20);
+            table.getTableHeader().setFont(boldFont);
+
+            JScrollPane scrollPane = new JScrollPane(table);
+            // Customised vertical scroll bar
+            scrollPane.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+                @Override
+                protected void configureScrollBarColors() {
+                    this.thumbColor = Color.DARK_GRAY; // The draggable thumb.
+                    this.trackColor = Color.GRAY;      // The background track.
+                }
+
+                @Override
+                protected JButton createDecreaseButton(int orientation) {
+                    JButton button = super.createDecreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+
+                @Override
+                protected JButton createIncreaseButton(int orientation) {
+                    JButton button = super.createIncreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+            });
+
+            // Customised horizontal scroll bar.
+            scrollPane.getHorizontalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+                @Override
+                protected void configureScrollBarColors() {
+                    this.thumbColor = Color.DARK_GRAY;
+                    this.trackColor = Color.GRAY;
+                }
+
+                @Override
+                protected JButton createDecreaseButton(int orientation) {
+                    JButton button = super.createDecreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+
+                @Override
+                protected JButton createIncreaseButton(int orientation) {
+                    JButton button = super.createIncreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+            });
+
             // Center text in some columns
             DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
             centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+            table.getColumnModel().getColumn(0).setCellRenderer(centerRenderer);
+            table.getColumnModel().getColumn(2).setCellRenderer(centerRenderer);
             table.getColumnModel().getColumn(4).setCellRenderer(centerRenderer);
             table.getColumnModel().getColumn(5).setCellRenderer(centerRenderer);
 
             contentPanel.removeAll();
-            contentPanel.add(new JScrollPane(table), BorderLayout.CENTER);
+            contentPanel.add(scrollPane, BorderLayout.CENTER);
             contentPanel.revalidate();
             contentPanel.repaint();
         }
@@ -1264,6 +1543,60 @@ public class AdminFrame extends JFrame {
                 model.addRow(row);
             }
             JTable table = new JTable(model);
+            table.setFont(bigFont);
+            table.setRowHeight(20);
+            table.getTableHeader().setFont(boldFont);
+
+            JScrollPane scrollPane = new JScrollPane(table);
+            // Customised vertical scroll bar
+            scrollPane.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+                @Override
+                protected void configureScrollBarColors() {
+                    this.thumbColor = Color.DARK_GRAY; // The draggable thumb.
+                    this.trackColor = Color.GRAY;      // The background track.
+                }
+
+                @Override
+                protected JButton createDecreaseButton(int orientation) {
+                    JButton button = super.createDecreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+
+                @Override
+                protected JButton createIncreaseButton(int orientation) {
+                    JButton button = super.createIncreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+            });
+
+            // Customised horizontal scroll bar.
+            scrollPane.getHorizontalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+                @Override
+                protected void configureScrollBarColors() {
+                    this.thumbColor = Color.DARK_GRAY;
+                    this.trackColor = Color.GRAY;
+                }
+
+                @Override
+                protected JButton createDecreaseButton(int orientation) {
+                    JButton button = super.createDecreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+
+                @Override
+                protected JButton createIncreaseButton(int orientation) {
+                    JButton button = super.createIncreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+            });
 
             // Center text in some columns
             DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
@@ -1272,7 +1605,7 @@ public class AdminFrame extends JFrame {
             table.getColumnModel().getColumn(5).setCellRenderer(centerRenderer);
 
             contentPanel.removeAll();
-            contentPanel.add(new JScrollPane(table), BorderLayout.CENTER);
+            contentPanel.add(scrollPane, BorderLayout.CENTER);
             contentPanel.revalidate();
             contentPanel.repaint();
         }
@@ -1386,6 +1719,9 @@ public class AdminFrame extends JFrame {
                 }
             }
             final JTable table = new JTable(model);
+            table.setFont(bigFont);
+            table.setRowHeight(20);
+            table.getTableHeader().setFont(boldFont);
 
             // Center text in some columns
             DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
@@ -1394,6 +1730,55 @@ public class AdminFrame extends JFrame {
             table.getColumnModel().getColumn(5).setCellRenderer(centerRenderer);
 
             JScrollPane scrollPane = new JScrollPane(table);
+            // Customised vertical scroll bar
+            scrollPane.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+                @Override
+                protected void configureScrollBarColors() {
+                    this.thumbColor = Color.DARK_GRAY; // The draggable thumb.
+                    this.trackColor = Color.GRAY;      // The background track.
+                }
+
+                @Override
+                protected JButton createDecreaseButton(int orientation) {
+                    JButton button = super.createDecreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+
+                @Override
+                protected JButton createIncreaseButton(int orientation) {
+                    JButton button = super.createIncreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+            });
+
+            // Customised horizontal scroll bar.
+            scrollPane.getHorizontalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+                @Override
+                protected void configureScrollBarColors() {
+                    this.thumbColor = Color.DARK_GRAY;
+                    this.trackColor = Color.GRAY;
+                }
+
+                @Override
+                protected JButton createDecreaseButton(int orientation) {
+                    JButton button = super.createDecreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+
+                @Override
+                protected JButton createIncreaseButton(int orientation) {
+                    JButton button = super.createIncreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+            });
             updatePanel.add(scrollPane, BorderLayout.CENTER);
             JButton updateEquipmentButton = new JButton("Update Selected Equipment");
             updateEquipmentButton.setBackground(Color.LIGHT_GRAY);
@@ -1516,6 +1901,9 @@ public class AdminFrame extends JFrame {
                 model.addRow(row);
             }
             final JTable table = new JTable(model);
+            table.setFont(bigFont);
+            table.setRowHeight(20);
+            table.getTableHeader().setFont(boldFont);
 
             // Center text in some columns
             DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
@@ -1524,6 +1912,55 @@ public class AdminFrame extends JFrame {
             table.getColumnModel().getColumn(5).setCellRenderer(centerRenderer);
 
             JScrollPane scrollPane = new JScrollPane(table);
+            // Customised vertical scroll bar
+            scrollPane.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+                @Override
+                protected void configureScrollBarColors() {
+                    this.thumbColor = Color.DARK_GRAY; // The draggable thumb.
+                    this.trackColor = Color.GRAY;      // The background track.
+                }
+
+                @Override
+                protected JButton createDecreaseButton(int orientation) {
+                    JButton button = super.createDecreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+
+                @Override
+                protected JButton createIncreaseButton(int orientation) {
+                    JButton button = super.createIncreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+            });
+
+            // Customised horizontal scroll bar.
+            scrollPane.getHorizontalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+                @Override
+                protected void configureScrollBarColors() {
+                    this.thumbColor = Color.DARK_GRAY;
+                    this.trackColor = Color.GRAY;
+                }
+
+                @Override
+                protected JButton createDecreaseButton(int orientation) {
+                    JButton button = super.createDecreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+
+                @Override
+                protected JButton createIncreaseButton(int orientation) {
+                    JButton button = super.createIncreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+            });
             deletePanel.add(scrollPane, BorderLayout.CENTER);
             JButton deleteEquipmentButton = new JButton("Delete Selected Equipment");
             deleteEquipmentButton.setBackground(Color.LIGHT_GRAY);
@@ -1645,7 +2082,67 @@ public class AdminFrame extends JFrame {
                 model.addRow(row);
             }
             final JTable table = new JTable(model);
+            table.setFont(bigFont);
+            table.setRowHeight(20);
+            table.getTableHeader().setFont(boldFont);
             JScrollPane scrollPane = new JScrollPane(table);
+            // Customised vertical scroll bar
+            scrollPane.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+                @Override
+                protected void configureScrollBarColors() {
+                    this.thumbColor = Color.DARK_GRAY; // The draggable thumb.
+                    this.trackColor = Color.GRAY;      // The background track.
+                }
+
+                @Override
+                protected JButton createDecreaseButton(int orientation) {
+                    JButton button = super.createDecreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+
+                @Override
+                protected JButton createIncreaseButton(int orientation) {
+                    JButton button = super.createIncreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+            });
+
+            // Customised horizontal scroll bar.
+            scrollPane.getHorizontalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+                @Override
+                protected void configureScrollBarColors() {
+                    this.thumbColor = Color.DARK_GRAY;
+                    this.trackColor = Color.GRAY;
+                }
+
+                @Override
+                protected JButton createDecreaseButton(int orientation) {
+                    JButton button = super.createDecreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+
+                @Override
+                protected JButton createIncreaseButton(int orientation) {
+                    JButton button = super.createIncreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+            });
+            // Center text in some columns
+            DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+            centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+            table.getColumnModel().getColumn(0).setCellRenderer(centerRenderer);
+            table.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
+            table.getColumnModel().getColumn(4).setCellRenderer(centerRenderer);
+            table.getColumnModel().getColumn(5).setCellRenderer(centerRenderer);
+
             updatePanel.add(scrollPane, BorderLayout.CENTER);
             JButton updateRequestButton = new JButton("Update Selected Request");
             updateRequestButton.setBackground(Color.LIGHT_GRAY);
@@ -1800,7 +2297,59 @@ public class AdminFrame extends JFrame {
             }
 
             JTable table = new JTable(model);
+            table.setFont(bigFont);
+            table.setRowHeight(20);
+            table.getTableHeader().setFont(boldFont);
             JScrollPane scrollPane = new JScrollPane(table);
+            // Customised vertical scroll bar
+            scrollPane.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+                @Override
+                protected void configureScrollBarColors() {
+                    this.thumbColor = Color.DARK_GRAY; // The draggable thumb.
+                    this.trackColor = Color.GRAY;      // The background track.
+                }
+
+                @Override
+                protected JButton createDecreaseButton(int orientation) {
+                    JButton button = super.createDecreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+
+                @Override
+                protected JButton createIncreaseButton(int orientation) {
+                    JButton button = super.createIncreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+            });
+
+            // Customised horizontal scroll bar.
+            scrollPane.getHorizontalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+                @Override
+                protected void configureScrollBarColors() {
+                    this.thumbColor = Color.DARK_GRAY;
+                    this.trackColor = Color.GRAY;
+                }
+
+                @Override
+                protected JButton createDecreaseButton(int orientation) {
+                    JButton button = super.createDecreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+
+                @Override
+                protected JButton createIncreaseButton(int orientation) {
+                    JButton button = super.createIncreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+            });
             panel.add(scrollPane, BorderLayout.CENTER);
 
             // Create a Check-Out button.
@@ -1874,7 +2423,59 @@ public class AdminFrame extends JFrame {
             }
 
             JTable table = new JTable(model);
+            table.setFont(bigFont);
+            table.setRowHeight(20);
+            table.getTableHeader().setFont(boldFont);
             JScrollPane scrollPane = new JScrollPane(table);
+            // Customised vertical scroll bar
+            scrollPane.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+                @Override
+                protected void configureScrollBarColors() {
+                    this.thumbColor = Color.DARK_GRAY; // The draggable thumb.
+                    this.trackColor = Color.GRAY;      // The background track.
+                }
+
+                @Override
+                protected JButton createDecreaseButton(int orientation) {
+                    JButton button = super.createDecreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+
+                @Override
+                protected JButton createIncreaseButton(int orientation) {
+                    JButton button = super.createIncreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+            });
+
+            // Customised horizontal scroll bar.
+            scrollPane.getHorizontalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+                @Override
+                protected void configureScrollBarColors() {
+                    this.thumbColor = Color.DARK_GRAY;
+                    this.trackColor = Color.GRAY;
+                }
+
+                @Override
+                protected JButton createDecreaseButton(int orientation) {
+                    JButton button = super.createDecreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+
+                @Override
+                protected JButton createIncreaseButton(int orientation) {
+                    JButton button = super.createIncreaseButton(orientation);
+                    button.setBackground(Color.DARK_GRAY);
+                    button.setForeground(Color.WHITE);
+                    return button;
+                }
+            });
             panel.add(scrollPane, BorderLayout.CENTER);
 
             // Create a Check In button.
