@@ -5,15 +5,45 @@ import model.User;
 import model.Equipment;
 import model.Reservation;
 import exception.DatabaseOperationException;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Font;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Graphics;
+import java.awt.FontMetrics;
+import java.awt.Rectangle;
+import java.awt.FlowLayout;
+import java.awt.Dimension;
+import java.awt.GridLayout;
+import java.awt.GridBagLayout;
+import java.awt.GridBagConstraints;
+import java.awt.Insets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
-import javax.swing.*;
-import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.JTabbedPane;
+import javax.swing.JTable;
+import javax.swing.JPanel;
+import javax.swing.Timer;
+import javax.swing.ImageIcon;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JTextField;
+import javax.swing.SwingConstants;
+import javax.swing.BoxLayout;
+import javax.swing.Box;
+import javax.swing.JSplitPane;
+import javax.swing.JScrollPane;
+import javax.swing.JComboBox;
+import javax.swing.JPasswordField;
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.plaf.basic.BasicButtonUI;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -50,9 +80,7 @@ public class AdminFrame extends JFrame {
         setSize(800, 600);
         setLocationRelativeTo(null);
         setIconImage(new ImageIcon(getClass().getResource("/view/icons/college.png")).getImage());
-        // Open in full screen
         setExtendedState(JFrame.MAXIMIZED_BOTH);
-
         JPanel mainPanel = new JPanel(new BorderLayout());
 
         // Create a tabbed pane with custom UI
@@ -161,7 +189,6 @@ public class AdminFrame extends JFrame {
             }
         });
     }
-
     // =========================
     // Inner Classes for Panels
     // =========================
