@@ -422,9 +422,15 @@ public class MediaStaffFrame extends JFrame {
             gridBagConstraints.insets = new Insets(10, 10, 10, 10);
             gridBagConstraints.fill = GridBagConstraints.HORIZONTAL;
 
-            Font bigFont = new Font("SansSerif", Font.PLAIN, 16);
+            JLabel iconLabel = new JLabel(new ImageIcon(getClass().getResource("/view/icons/user-profile.png")));
+            gridBagConstraints.gridx = 0;
+            gridBagConstraints.gridy = 0;
+            gridBagConstraints.gridwidth = 2;
+            gridBagConstraints.anchor = GridBagConstraints.CENTER;
+            add(iconLabel, gridBagConstraints);
 
-
+            //Resets gridwidth for subsequent components
+            gridBagConstraints.gridwidth = 1;
 
 
             JLabel labelUserId = new JLabel("User ID:");
@@ -453,19 +459,23 @@ public class MediaStaffFrame extends JFrame {
             labelRole.setFont(boldFont);
             textFieldRole.setFont(bigFont);
 
-            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 0;
+            gridBagConstraints.gridx = 0;
+            gridBagConstraints.gridy = 1;
             add(labelUserId, gridBagConstraints);
             gridBagConstraints.gridx = 1;
             add(textFieldUserId, gridBagConstraints);
-            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 1;
+            gridBagConstraints.gridx = 0;
+            gridBagConstraints.gridy = 2;
             add(labelName, gridBagConstraints);
             gridBagConstraints.gridx = 1;
             add(textFieldName, gridBagConstraints);
-            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 2;
+            gridBagConstraints.gridx = 0;
+            gridBagConstraints.gridy = 3;
             add(labelEmail, gridBagConstraints);
             gridBagConstraints.gridx = 1;
             add(textFieldEmail, gridBagConstraints);
-            gridBagConstraints.gridx = 0; gridBagConstraints.gridy = 3;
+            gridBagConstraints.gridx = 0;
+            gridBagConstraints.gridy = 4;
             add(labelRole, gridBagConstraints);
             gridBagConstraints.gridx = 1;
             add(textFieldRole, gridBagConstraints);
@@ -1842,12 +1852,21 @@ public class MediaStaffFrame extends JFrame {
                         JOptionPane.showMessageDialog(this, "Error: Invalid staff ID.");
                         return;
                     }
-                    // Prompt for the equipment state.
-                    String equipmentState = JOptionPane.showInputDialog(this, "Enter Equipment State (Good, Fair, Poor):");
+                    String[] states = {"Good", "Fair", "Poor"};
+                    String equipmentState = (String) JOptionPane.showInputDialog(
+                            this,
+                            "Select Equipment State:",
+                            "Equipment State",
+                            JOptionPane.QUESTION_MESSAGE,
+                            null,
+                            states,
+                            states[0]
+                    );
                     if (equipmentState == null || equipmentState.trim().isEmpty()) {
                         JOptionPane.showMessageDialog(this, "Equipment state is required.");
                         return;
                     }
+
                     boolean success = checkoutController.checkInEquipment(resId, staffId, equipmentState);
                     if (success)
                         JOptionPane.showMessageDialog(this, "Equipment checked in successfully.");

@@ -148,6 +148,8 @@ public class LoginFrame extends JFrame {
                 new AdminFrame(user).setVisible(true);
             } else if (user.getRole().equalsIgnoreCase("MediaStaff")) {
                 new MediaStaffFrame(user).setVisible(true);
+            } else if(user.getRole().equalsIgnoreCase("Student") || user.getRole().equalsIgnoreCase("Lecturer")) {
+                new LecturerStudentFrame(user).setVisible(true);
             } else {
                 JOptionPane.showMessageDialog(this,
                         "Only Admin and Media Staff GUI is implemented in this version.",
