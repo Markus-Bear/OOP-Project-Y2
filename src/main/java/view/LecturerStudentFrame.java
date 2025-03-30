@@ -21,10 +21,7 @@ import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
@@ -57,11 +54,11 @@ import javax.swing.JFormattedTextField.AbstractFormatter;
  * The look and feel is designed to be consistent with the AdminFrame.
  */
 public class LecturerStudentFrame extends JFrame {
-    private User loggedInUser;
-    private JTabbedPane tabbedPane;
-    private Font bigFont = new Font("SansSerif", Font.PLAIN, 16);
-    private Font boldFont = new Font("SansSerif", Font.BOLD, 16);
-    private ReservationController reservationController = new ReservationController();
+    private final User loggedInUser;
+    private final JTabbedPane tabbedPane;
+    private final Font bigFont = new Font("SansSerif", Font.PLAIN, 16);
+    private final Font boldFont = new Font("SansSerif", Font.BOLD, 16);
+    private final ReservationController reservationController = new ReservationController();
 
     /**
      * Constructs a LecturerStudentFrame for the specified user.
@@ -74,7 +71,7 @@ public class LecturerStudentFrame extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(800, 600);
         setLocationRelativeTo(null);
-        setIconImage(new ImageIcon(getClass().getResource("/view/icons/college.png")).getImage());
+        setIconImage(new ImageIcon(Objects.requireNonNull(getClass().getResource("/view/icons/college.png"))).getImage());
         setExtendedState(JFrame.MAXIMIZED_BOTH);
 
         JPanel mainPanel = new JPanel(new BorderLayout());
@@ -130,10 +127,10 @@ public class LecturerStudentFrame extends JFrame {
 
         // Add two tabs: Home and Reservations.
         tabbedPane.addTab("Home",
-                new ImageIcon(getClass().getResource("/view/icons/home.png")),
+                new ImageIcon(Objects.requireNonNull(getClass().getResource("/view/icons/home.png"))),
                 new HomePanel());
         tabbedPane.addTab("Reservations",
-                new ImageIcon(getClass().getResource("/view/icons/reservation.png")),
+                new ImageIcon(Objects.requireNonNull(getClass().getResource("/view/icons/reservation.png"))),
                 new ReservationsPanel());
 
         mainPanel.add(tabbedPane, BorderLayout.CENTER);
@@ -176,18 +173,18 @@ public class LecturerStudentFrame extends JFrame {
         public HomePanel() {
             setLayout(new GridBagLayout());
             setBackground(Color.WHITE);
-            GridBagConstraints gridBagContraint = new GridBagConstraints();
-            gridBagContraint.insets = new Insets(10, 10, 10, 10);
-            gridBagContraint.fill = GridBagConstraints.HORIZONTAL;
+            GridBagConstraints gridBagConstraint = new GridBagConstraints();
+            gridBagConstraint.insets = new Insets(10, 10, 10, 10);
+            gridBagConstraint.fill = GridBagConstraints.HORIZONTAL;
 
             // Optional profile icon.
-            JLabel iconLabel = new JLabel(new ImageIcon(getClass().getResource("/view/icons/user-profile.png")));
-            gridBagContraint.gridx = 0;
-            gridBagContraint.gridy = 0;
-            gridBagContraint.gridwidth = 2;
-            gridBagContraint.anchor = GridBagConstraints.CENTER;
-            add(iconLabel, gridBagContraint);
-            gridBagContraint.gridwidth = 1; // Reset
+            JLabel iconLabel = new JLabel(new ImageIcon(Objects.requireNonNull(getClass().getResource("/view/icons/user-profile.png"))));
+            gridBagConstraint.gridx = 0;
+            gridBagConstraint.gridy = 0;
+            gridBagConstraint.gridwidth = 2;
+            gridBagConstraint.anchor = GridBagConstraints.CENTER;
+            add(iconLabel, gridBagConstraint);
+            gridBagConstraint.gridwidth = 1; // Reset
 
             // Basic user details.
             JLabel labelUserId = new JLabel("User ID:");
@@ -223,29 +220,29 @@ public class LecturerStudentFrame extends JFrame {
             labelEmail.setForeground(labelColor);
             labelRole.setForeground(labelColor);
 
-            gridBagContraint.gridx = 0;
-            gridBagContraint.gridy = 1;
-            add(labelUserId, gridBagContraint);
-            gridBagContraint.gridx = 1;
-            add(textFieldUserId, gridBagContraint);
+            gridBagConstraint.gridx = 0;
+            gridBagConstraint.gridy = 1;
+            add(labelUserId, gridBagConstraint);
+            gridBagConstraint.gridx = 1;
+            add(textFieldUserId, gridBagConstraint);
 
-            gridBagContraint.gridx = 0;
-            gridBagContraint.gridy = 2;
-            add(labelName, gridBagContraint);
-            gridBagContraint.gridx = 1;
-            add(textFieldName, gridBagContraint);
+            gridBagConstraint.gridx = 0;
+            gridBagConstraint.gridy = 2;
+            add(labelName, gridBagConstraint);
+            gridBagConstraint.gridx = 1;
+            add(textFieldName, gridBagConstraint);
 
-            gridBagContraint.gridx = 0;
-            gridBagContraint.gridy = 3;
-            add(labelEmail, gridBagContraint);
-            gridBagContraint.gridx = 1;
-            add(textFieldEmail, gridBagContraint);
+            gridBagConstraint.gridx = 0;
+            gridBagConstraint.gridy = 3;
+            add(labelEmail, gridBagConstraint);
+            gridBagConstraint.gridx = 1;
+            add(textFieldEmail, gridBagConstraint);
 
-            gridBagContraint.gridx = 0;
-            gridBagContraint.gridy = 4;
-            add(labelRole, gridBagContraint);
-            gridBagContraint.gridx = 1;
-            add(textFieldRole, gridBagContraint);
+            gridBagConstraint.gridx = 0;
+            gridBagConstraint.gridy = 4;
+            add(labelRole, gridBagConstraint);
+            gridBagConstraint.gridx = 1;
+            add(textFieldRole, gridBagConstraint);
 
             // Conditionally display additional fields based on role.
             if (loggedInUser.getRole().equalsIgnoreCase("Student")) {
@@ -271,23 +268,23 @@ public class LecturerStudentFrame extends JFrame {
                 labelCourse.setForeground(labelColor);
                 labelYear.setForeground(labelColor);
 
-                gridBagContraint.gridx = 0;
-                gridBagContraint.gridy = 5;
-                add(labelDept, gridBagContraint);
-                gridBagContraint.gridx = 1;
-                add(textFieldDept, gridBagContraint);
+                gridBagConstraint.gridx = 0;
+                gridBagConstraint.gridy = 5;
+                add(labelDept, gridBagConstraint);
+                gridBagConstraint.gridx = 1;
+                add(textFieldDept, gridBagConstraint);
 
-                gridBagContraint.gridx = 0;
-                gridBagContraint.gridy = 6;
-                add(labelCourse, gridBagContraint);
-                gridBagContraint.gridx = 1;
-                add(textFieldCourse, gridBagContraint);
+                gridBagConstraint.gridx = 0;
+                gridBagConstraint.gridy = 6;
+                add(labelCourse, gridBagConstraint);
+                gridBagConstraint.gridx = 1;
+                add(textFieldCourse, gridBagConstraint);
 
-                gridBagContraint.gridx = 0;
-                gridBagContraint.gridy = 7;
-                add(labelYear, gridBagContraint);
-                gridBagContraint.gridx = 1;
-                add(textFieldYear, gridBagContraint);
+                gridBagConstraint.gridx = 0;
+                gridBagConstraint.gridy = 7;
+                add(labelYear, gridBagConstraint);
+                gridBagConstraint.gridx = 1;
+                add(textFieldYear, gridBagConstraint);
             } else if (loggedInUser.getRole().equalsIgnoreCase("Lecturer")) {
                 JLabel labelDept = new JLabel("Department:");
                 JTextField textFieldDept = new JTextField(loggedInUser.getDepartment(), 20);
@@ -297,11 +294,11 @@ public class LecturerStudentFrame extends JFrame {
                 textFieldDept.setFont(bigFont);
                 labelDept.setForeground(labelColor);
 
-                gridBagContraint.gridx = 0;
-                gridBagContraint.gridy = 5;
-                add(labelDept, gridBagContraint);
-                gridBagContraint.gridx = 1;
-                add(textFieldDept, gridBagContraint);
+                gridBagConstraint.gridx = 0;
+                gridBagConstraint.gridy = 5;
+                add(labelDept, gridBagConstraint);
+                gridBagConstraint.gridx = 1;
+                add(textFieldDept, gridBagConstraint);
             }
         }
     }
@@ -311,7 +308,7 @@ public class LecturerStudentFrame extends JFrame {
      * It contains a sidebar with two options: Reserve Equipment and View Reservations.
      */
     class ReservationsPanel extends JPanel implements Refreshable {
-        private JPanel contentPanel;
+        private final JPanel contentPanel;
 
         /**
          * Constructs a ReservationsPanel and sets up the sidebar and content area.
@@ -425,14 +422,14 @@ public class LecturerStudentFrame extends JFrame {
             contentPanel.removeAll();
             JPanel formPanel = new JPanel(new GridBagLayout());
             formPanel.setBackground(Color.WHITE);
-            GridBagConstraints gridBagContraint = new GridBagConstraints();
-            gridBagContraint.insets = new Insets(10, 10, 10, 10);
-            gridBagContraint.fill = GridBagConstraints.HORIZONTAL;
+            GridBagConstraints gridBagConstraint = new GridBagConstraints();
+            gridBagConstraint.insets = new Insets(10, 10, 10, 10);
+            gridBagConstraint.fill = GridBagConstraints.HORIZONTAL;
 
             JLabel dateLabel = new JLabel("Select Reservation Date:");
-            gridBagContraint.gridx = 0;
-            gridBagContraint.gridy = 0;
-            formPanel.add(dateLabel, gridBagContraint);
+            gridBagConstraint.gridx = 0;
+            gridBagConstraint.gridy = 0;
+            formPanel.add(dateLabel, gridBagConstraint);
 
             // Set up JDatePicker.
             UtilDateModel dateModel = new UtilDateModel();
@@ -443,19 +440,19 @@ public class LecturerStudentFrame extends JFrame {
             datePickerProperty.put("text.year", "Year");
             JDatePanelImpl datePanel = new JDatePanelImpl(dateModel, datePickerProperty);
             JDatePickerImpl datePicker = new JDatePickerImpl(datePanel, new DateLabelFormatter());
-            gridBagContraint.gridx = 1;
-            gridBagContraint.gridy = 0;
-            formPanel.add(datePicker, gridBagContraint);
+            gridBagConstraint.gridx = 1;
+            gridBagConstraint.gridy = 0;
+            formPanel.add(datePicker, gridBagConstraint);
 
             // Reserve button spans full width.
             JButton reserveButton = new JButton("Reserve Equipment");
             reserveButton.setBackground(Color.LIGHT_GRAY);
             reserveButton.setForeground(Color.DARK_GRAY);
             reserveButton.setFont(boldFont);
-            gridBagContraint.gridx = 0;
-            gridBagContraint.gridy = 1;
-            gridBagContraint.gridwidth = 2;
-            formPanel.add(reserveButton, gridBagContraint);
+            gridBagConstraint.gridx = 0;
+            gridBagConstraint.gridy = 1;
+            gridBagConstraint.gridwidth = 2;
+            formPanel.add(reserveButton, gridBagConstraint);
 
             reserveButton.addActionListener(e -> {
                 Date selectedDate = (Date) datePicker.getModel().getValue();
@@ -535,7 +532,7 @@ public class LecturerStudentFrame extends JFrame {
         JButton button = new JButton(text);
         button.setUI(new BasicButtonUI());
         if (iconPath != null) {
-            button.setIcon(new ImageIcon(getClass().getResource(iconPath)));
+            button.setIcon(new ImageIcon(Objects.requireNonNull(getClass().getResource(iconPath))));
         }
         button.setAlignmentX(Component.CENTER_ALIGNMENT);
         button.setPreferredSize(new Dimension(0, 100));

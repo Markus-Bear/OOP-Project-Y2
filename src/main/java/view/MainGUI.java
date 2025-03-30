@@ -1,12 +1,12 @@
 package view;
 
-import com.formdev.flatlaf.FlatDarkLaf;  // Ensure FlatLaf is on your classpath
+import com.formdev.flatlaf.FlatDarkLaf;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import java.awt.Color;
 /**
  * Main entry point for the Media Equipment Rental System GUI application.
- *
+ * <p>
  * This class initializes and displays the LoginFrame on the Event Dispatch Thread.
  */
 public class MainGUI {

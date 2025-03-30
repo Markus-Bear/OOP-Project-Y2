@@ -19,10 +19,7 @@ import java.awt.GridBagLayout;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
@@ -63,10 +60,10 @@ import org.jfree.data.general.DefaultPieDataset;
  * Profile view, User management, Equipment management, and Reservations management.
  */
 public class AdminFrame extends JFrame {
-    private User loggedInUser;
-    private JTabbedPane tabbedPane;
-    private Font bigFont = new Font("SansSerif", Font.PLAIN, 16);
-    private Font boldFont = new Font("SansSerif", Font.BOLD, 16);
+    private final User loggedInUser;
+    private final JTabbedPane tabbedPane;
+    private final Font bigFont = new Font("SansSerif", Font.PLAIN, 16);
+    private final Font boldFont = new Font("SansSerif", Font.BOLD, 16);
 
     /**
      * Constructs an AdminFrame for the given user.
@@ -79,7 +76,7 @@ public class AdminFrame extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(800, 600);
         setLocationRelativeTo(null);
-        setIconImage(new ImageIcon(getClass().getResource("/view/icons/college.png")).getImage());
+        setIconImage(new ImageIcon(Objects.requireNonNull(getClass().getResource("/view/icons/college.png"))).getImage());
         setExtendedState(JFrame.MAXIMIZED_BOTH);
         JPanel mainPanel = new JPanel(new BorderLayout());
 
@@ -140,19 +137,19 @@ public class AdminFrame extends JFrame {
 
         // Add tabs with icons.
         tabbedPane.addTab("Home",
-                new ImageIcon(getClass().getResource("/view/icons/home.png")),
+                new ImageIcon(Objects.requireNonNull(getClass().getResource("/view/icons/home.png"))),
                 new HomePanel(loggedInUser));
         tabbedPane.addTab("View Profile",
-                new ImageIcon(getClass().getResource("/view/icons/profile.png")),
+                new ImageIcon(Objects.requireNonNull(getClass().getResource("/view/icons/profile.png"))),
                 new ViewProfilePanel(loggedInUser));
         tabbedPane.addTab("User Management",
-                new ImageIcon(getClass().getResource("/view/icons/user.png")),
+                new ImageIcon(Objects.requireNonNull(getClass().getResource("/view/icons/user.png"))),
                 new UserManagementPanel(loggedInUser.getUserId()));
         tabbedPane.addTab("Equipment Management",
-                new ImageIcon(getClass().getResource("/view/icons/equipment.png")),
+                new ImageIcon(Objects.requireNonNull(getClass().getResource("/view/icons/equipment.png"))),
                 new EquipmentManagementPanel(loggedInUser.getUserId()));
         tabbedPane.addTab("Reservations Management",
-                new ImageIcon(getClass().getResource("/view/icons/reservation.png")),
+                new ImageIcon(Objects.requireNonNull(getClass().getResource("/view/icons/reservation.png"))),
                 new ReservationsManagementPanel(loggedInUser.getUserId()));
 
         mainPanel.add(tabbedPane, BorderLayout.CENTER);
@@ -199,12 +196,11 @@ public class AdminFrame extends JFrame {
      * The panel automatically refreshes its charts every 3 seconds.
      */
     class HomePanel extends JPanel {
-        private ChartPanel equipmentStateChartPanel;
-        private ChartPanel checkedOutChartPanel;
-        private ChartPanel reservationsStatusChartPanel;
-        private ChartPanel userReservationsChartPanel;
-        private Timer timer;
-        private User loggedInUser; // Logged-in user for context
+        private final ChartPanel equipmentStateChartPanel;
+        private final ChartPanel checkedOutChartPanel;
+        private final ChartPanel reservationsStatusChartPanel;
+        private final ChartPanel userReservationsChartPanel;
+        private final User loggedInUser; // Logged-in user for context
 
         /**
          * Constructs a HomePanel for the specified user.
@@ -238,7 +234,7 @@ public class AdminFrame extends JFrame {
             add(userReservationsChartPanel);
 
             // Set up a Timer to update all Charts every 3 seconds.
-            timer = new Timer(3000, e -> updateAllCharts());
+            Timer timer = new Timer(3000, e -> updateAllCharts());
             timer.start();
         }
 
@@ -546,8 +542,8 @@ public class AdminFrame extends JFrame {
      * adding, updating, and deleting users.
      */
     class UserManagementPanel extends JPanel implements Refreshable {
-        private String adminId;
-        private JPanel contentPanel;
+        private final String adminId;
+        private final JPanel contentPanel;
 
         /**
          * Constructs a UserManagementPanel for the given admin.
@@ -1377,8 +1373,8 @@ public class AdminFrame extends JFrame {
      * including viewing, adding, updating, and deleting equipment.
      */
     class EquipmentManagementPanel extends JPanel implements Refreshable {
-        private String adminId;
-        private JPanel contentPanel;
+        private final String adminId;
+        private final JPanel contentPanel;
 
         /**
          * Constructs an EquipmentManagementPanel for the given admin.
@@ -2040,8 +2036,8 @@ public class AdminFrame extends JFrame {
      * It allows the admin to approve or reject reservations as well as process equipment check-out and check-in.
      */
     class ReservationsManagementPanel extends JPanel implements Refreshable {
-        private String adminId;
-        private JPanel contentPanel;
+        private final String adminId;
+        private final JPanel contentPanel;
 
         /**
          * Constructs a ReservationsManagementPanel for the given admin.

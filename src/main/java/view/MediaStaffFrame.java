@@ -26,10 +26,7 @@ import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.event.*;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
@@ -68,10 +65,10 @@ import org.jfree.data.general.DefaultPieDataset;
  * and a log-out button.
  */
 public class MediaStaffFrame extends JFrame {
-    private User loggedInUser;
-    private JTabbedPane tabbedPane;
-    private Font bigFont = new Font("SansSerif", Font.PLAIN, 16);
-    private Font boldFont = new Font("SansSerif", Font.BOLD, 16);
+    private final User loggedInUser;
+    private final JTabbedPane tabbedPane;
+    private final Font bigFont = new Font("SansSerif", Font.PLAIN, 16);
+    private final Font boldFont = new Font("SansSerif", Font.BOLD, 16);
 
     public MediaStaffFrame(User user) {
         this.loggedInUser = user;
@@ -198,12 +195,11 @@ public class MediaStaffFrame extends JFrame {
      * The panel automatically refreshes its charts every 3 seconds.
      */
     class HomePanel extends JPanel {
-        private ChartPanel equipmentStateChartPanel;
-        private ChartPanel checkedOutChartPanel;
-        private ChartPanel reservationsStatusChartPanel;
-        private ChartPanel userReservationsChartPanel;
-        private Timer timer;
-        private User loggedInUser; // Logged-in user for context
+        private final ChartPanel equipmentStateChartPanel;
+        private final ChartPanel checkedOutChartPanel;
+        private final ChartPanel reservationsStatusChartPanel;
+        private final ChartPanel userReservationsChartPanel;
+        private final User loggedInUser; // Logged-in user for context
 
         /**
          * Constructs a HomePanel for the specified user.
@@ -237,7 +233,7 @@ public class MediaStaffFrame extends JFrame {
             add(userReservationsChartPanel);
 
             // Set up a Timer to update all Charts every 3 seconds.
-            timer = new Timer(3000, e -> updateAllCharts());
+            Timer timer = new Timer(3000, e -> updateAllCharts());
             timer.start();
         }
 
@@ -422,7 +418,7 @@ public class MediaStaffFrame extends JFrame {
             gridBagConstraints.insets = new Insets(10, 10, 10, 10);
             gridBagConstraints.fill = GridBagConstraints.HORIZONTAL;
 
-            JLabel iconLabel = new JLabel(new ImageIcon(getClass().getResource("/view/icons/user-profile.png")));
+            JLabel iconLabel = new JLabel(new ImageIcon(Objects.requireNonNull(getClass().getResource("/view/icons/user-profile.png"))));
             gridBagConstraints.gridx = 0;
             gridBagConstraints.gridy = 0;
             gridBagConstraints.gridwidth = 2;
@@ -494,7 +490,7 @@ public class MediaStaffFrame extends JFrame {
         button.setUI(new BasicButtonUI());
 
         if (iconPath != null) {
-            button.setIcon(new ImageIcon(getClass().getResource(iconPath)));
+            button.setIcon(new ImageIcon(Objects.requireNonNull(getClass().getResource(iconPath))));
         }
 
         button.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -545,7 +541,7 @@ public class MediaStaffFrame extends JFrame {
      * adding, updating, and deleting users.
      */
     class UserManagementPanel extends JPanel implements Refreshable{
-        private JPanel contentPanel;
+        private final JPanel contentPanel;
         /**
          * Constructs a UserManagementPanel for the given media staff member.
          */
@@ -896,8 +892,8 @@ public class MediaStaffFrame extends JFrame {
      * including viewing, adding, updating, and deleting equipment.
      */
     class EquipmentManagementPanel extends JPanel  implements Refreshable {
-        private String staffId;
-        private JPanel contentPanel;
+        private final String staffId;
+        private final JPanel contentPanel;
 
         /**
          * Constructs an EquipmentManagementPanel for the given media staff member.
@@ -1349,8 +1345,8 @@ public class MediaStaffFrame extends JFrame {
      * It allows the media staff member to approve or reject reservations as well as process equipment check-out and check-in.
      */
     class ReservationsManagementPanel extends JPanel implements Refreshable {
-        private String staffId;
-        private JPanel contentPanel;
+        private final String staffId;
+        private final JPanel contentPanel;
 
         /**
          * Constructs a ReservationsManagementPanel for the given staff.
@@ -1546,7 +1542,7 @@ public class MediaStaffFrame extends JFrame {
                 textFieldReturnDate.setEditable(false);
                 JLabel labelStatus = new JLabel("Status:");
                 String[] status = {"Approved", "Rejected"};
-                JComboBox<String> comboBoxStatus = new JComboBox(status);
+                JComboBox<String> comboBoxStatus = new JComboBox<>(status);
                 comboBoxStatus.setSelectedItem(selectedReservation.getStatus());
 
                 JButton updateRequestSubmitButton = new JButton("Update Request");
