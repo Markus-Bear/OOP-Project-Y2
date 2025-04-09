@@ -7,6 +7,9 @@ import model.Equipment;
 import model.Reservation;
 import model.User;
 import exception.DatabaseOperationException;
+import org.jdatepicker.impl.JDatePanelImpl;
+import org.jdatepicker.impl.JDatePickerImpl;
+import org.jdatepicker.impl.UtilDateModel;
 import java.awt.BorderLayout;
 import java.awt.Font;
 import java.awt.Color;
@@ -21,14 +24,17 @@ import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Objects;
+import java.util.List;
+import java.util.Date;
+import java.util.Properties;
+import java.util.Calendar;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JPanel;
-import javax.swing.border.EmptyBorder;
 import javax.swing.ImageIcon;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -39,13 +45,9 @@ import javax.swing.BoxLayout;
 import javax.swing.Box;
 import javax.swing.JSplitPane;
 import javax.swing.JScrollPane;
-import javax.swing.plaf.basic.BasicButtonUI;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import org.jdatepicker.impl.JDatePanelImpl;
-import org.jdatepicker.impl.JDatePickerImpl;
-import org.jdatepicker.impl.UtilDateModel;
-import javax.swing.JFormattedTextField.AbstractFormatter;
+import javax.swing.JFormattedTextField;
+import javax.swing.UIManager;
+import javax.swing.border.EmptyBorder;
 
 /**
  * LecturerStudentFrame provides the main window for Lecturer/Student users.
@@ -82,36 +84,48 @@ public class LecturerStudentFrame extends JFrame {
         tabbedPane.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
         tabbedPane.setUI(new javax.swing.plaf.basic.BasicTabbedPaneUI() {
             @Override
-            protected void paintTabBackground(Graphics graphic, int tabPlacement,
-                                              int tabIndex, int x, int y, int w, int h, boolean isSelected) {
-                graphic.setColor(isSelected ? Color.DARK_GRAY : Color.LIGHT_GRAY);
-                graphic.fillRect(x, y, w, h);
+            protected void paintTabBackground(Graphics g, int tabPlacement, int tabIndex,
+                                              int x, int y, int w, int h, boolean isSelected) {
+                Color selectedBg = UIManager.getColor("TabbedPane.selectedBackground");
+                Color unselectedBg = UIManager.getColor("TabbedPane.unselectedBackground");
+                if (selectedBg == null) selectedBg = new Color(0x435465); // fallback
+                if (unselectedBg == null) unselectedBg = Color.DARK_GRAY;
+
+                // Optionally, check for hover state if you add mouse listeners.
+                // For now, simply paint based on selection.
+                g.setColor(isSelected ? selectedBg : unselectedBg);
+                g.fillRect(x, y, w, h);
             }
 
             @Override
-            protected void paintText(Graphics graphic, int tabPlacement, Font font,
+            protected void paintText(Graphics g, int tabPlacement, Font font,
                                      FontMetrics metrics, int tabIndex, String title,
                                      Rectangle textRect, boolean isSelected) {
-                graphic.setFont(font);
-                graphic.setColor(isSelected ? Color.WHITE : Color.BLACK);
-                graphic.drawString(title, textRect.x, textRect.y + metrics.getAscent());
+                g.setFont(font);
+                Color selectedFg = UIManager.getColor("TabbedPane.selectedForeground");
+                Color unselectedFg = UIManager.getColor("TabbedPane.unselectedForeground");
+                if (selectedFg == null) selectedFg = Color.WHITE;
+                if (unselectedFg == null) unselectedFg = Color.BLACK;
+                g.setColor(isSelected ? selectedFg : unselectedFg);
+                g.drawString(title, textRect.x, textRect.y + metrics.getAscent());
             }
 
             @Override
-            protected void paintFocusIndicator(Graphics graphic, int tabPlacement, Rectangle[] rects,
+            protected void paintFocusIndicator(Graphics g, int tabPlacement, Rectangle[] rects,
                                                int tabIndex, Rectangle iconRect, Rectangle textRect,
                                                boolean isSelected) {
-                // Remove focus indicator.
+                // Do nothing to remove the dotted focus outline
             }
 
             @Override
-            protected void paintContentBorder(Graphics graphic, int tabPlacement, int selectedIndex) {
-                // Remove content border.
+            protected void paintContentBorder(Graphics g, int tabPlacement, int selectedIndex) {
+                // Do nothing to remove the “blue border” around the content area
             }
 
             @Override
             protected int calculateTabHeight(int tabPlacement, int tabIndex, int fontHeight) {
-                return 60; // Adjust as needed.
+                // Increase tab height to accommodate a 64px icon plus text.
+                return 60; // adjust as needed
             }
 
             @Override
@@ -119,12 +133,13 @@ public class LecturerStudentFrame extends JFrame {
                 int totalWidth = tabPane.getWidth();
                 int tabCount = tabPane.getTabCount();
                 if (tabCount > 0 && totalWidth > 0) {
+                    // Divide the total available width equally among all tabs.
                     return totalWidth / tabCount;
                 }
+                // Fallback if width is not available yet.
                 return super.calculateTabWidth(tabPlacement, tabIndex, metrics);
             }
         });
-
         // Add two tabs: Home and Reservations.
         tabbedPane.addTab("Home",
                 new ImageIcon(Objects.requireNonNull(getClass().getResource("/view/icons/home.png"))),
@@ -138,8 +153,6 @@ public class LecturerStudentFrame extends JFrame {
         // Bottom panel with a logout button.
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton logoutButton = new JButton("Log out");
-        logoutButton.setBackground(Color.DARK_GRAY);
-        logoutButton.setForeground(Color.WHITE);
         logoutButton.setPreferredSize(new Dimension(100, 30));
         logoutButton.setMaximumSize(new Dimension(100, 30));
         logoutButton.setFocusPainted(false);
@@ -391,8 +404,6 @@ public class LecturerStudentFrame extends JFrame {
 
             // Reserve Equipment button.
             JButton reserveButton = new JButton("Reserve Equipment");
-            reserveButton.setBackground(Color.LIGHT_GRAY);
-            reserveButton.setForeground(Color.DARK_GRAY);
             reserveButton.setFont(boldFont);
             reserveButton.setPreferredSize(new Dimension(0, 40));
             reserveButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
@@ -446,8 +457,6 @@ public class LecturerStudentFrame extends JFrame {
 
             // Reserve button spans full width.
             JButton reserveButton = new JButton("Reserve Equipment");
-            reserveButton.setBackground(Color.LIGHT_GRAY);
-            reserveButton.setForeground(Color.DARK_GRAY);
             reserveButton.setFont(boldFont);
             gridBagConstraint.gridx = 0;
             gridBagConstraint.gridy = 1;
@@ -530,14 +539,16 @@ public class LecturerStudentFrame extends JFrame {
      */
     private JButton createMenuItem(String text, String iconPath) {
         JButton button = new JButton(text);
-        button.setUI(new BasicButtonUI());
+        // Let the button use the default Look and Feel ButtonUI.
+        // button.setUI(new BasicButtonUI());  // Ensure this line is removed.
+
         if (iconPath != null) {
-            button.setIcon(new ImageIcon(Objects.requireNonNull(getClass().getResource(iconPath))));
+            button.setIcon(new ImageIcon(getClass().getResource(iconPath)));
         }
+
         button.setAlignmentX(Component.CENTER_ALIGNMENT);
-        button.setPreferredSize(new Dimension(0, 100));
-        button.setBackground(Color.DARK_GRAY);
-        button.setForeground(Color.WHITE);
+        button.setPreferredSize(new Dimension(150, 100));
+        button.setMaximumSize(new Dimension(Integer.MAX_VALUE, button.getPreferredSize().height));
         button.setFocusPainted(true);
         button.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
         button.setContentAreaFilled(true);
@@ -546,38 +557,13 @@ public class LecturerStudentFrame extends JFrame {
         button.setBorderPainted(false);
         button.setVerticalTextPosition(SwingConstants.BOTTOM);
         button.setHorizontalTextPosition(SwingConstants.CENTER);
-        final Color defaultColor = Color.DARK_GRAY;
-        final Color hoverColor = new Color(64, 64, 64);
-        final Color pressedColor = new Color(96, 96, 96);
-        button.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                button.setBackground(hoverColor);
-            }
-            @Override
-            public void mouseExited(MouseEvent e) {
-                button.setBackground(defaultColor);
-            }
-            @Override
-            public void mousePressed(MouseEvent e) {
-                button.setBackground(pressedColor);
-            }
-            @Override
-            public void mouseReleased(MouseEvent e) {
-                if (button.contains(e.getPoint())) {
-                    button.setBackground(hoverColor);
-                } else {
-                    button.setBackground(defaultColor);
-                }
-            }
-        });
         return button;
     }
 
     /**
      * DateLabelFormatter formats the date for the JDatePicker.
      */
-    private static class DateLabelFormatter extends AbstractFormatter {
+    private static class DateLabelFormatter extends JFormattedTextField.AbstractFormatter {
         private final String datePattern = "dd-MM-yyyy";
         private final SimpleDateFormat dateFormatter = new SimpleDateFormat(datePattern);
 

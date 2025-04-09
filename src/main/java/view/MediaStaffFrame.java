@@ -24,9 +24,12 @@ import java.awt.GridLayout;
 import java.awt.GridBagLayout;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
-import java.awt.event.*;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Objects;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Date;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
@@ -45,13 +48,10 @@ import javax.swing.Box;
 import javax.swing.JSplitPane;
 import javax.swing.JScrollPane;
 import javax.swing.JComboBox;
-import javax.swing.JPasswordField;
-import javax.swing.DefaultComboBoxModel;
+import javax.swing.UIManager;
 import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.plaf.basic.BasicButtonUI;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -85,10 +85,16 @@ public class MediaStaffFrame extends JFrame {
         tabbedPane.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
         tabbedPane.setUI(new javax.swing.plaf.basic.BasicTabbedPaneUI() {
             @Override
-            protected void paintTabBackground(Graphics g, int tabPlacement,
-                                              int tabIndex, int x, int y, int w, int h, boolean isSelected) {
-                // Use dark gray for selected, light gray for others.
-                g.setColor(isSelected ? Color.DARK_GRAY : Color.LIGHT_GRAY);
+            protected void paintTabBackground(Graphics g, int tabPlacement, int tabIndex,
+                                              int x, int y, int w, int h, boolean isSelected) {
+                Color selectedBg = UIManager.getColor("TabbedPane.selectedBackground");
+                Color unselectedBg = UIManager.getColor("TabbedPane.unselectedBackground");
+                if (selectedBg == null) selectedBg = new Color(0x435465); // fallback
+                if (unselectedBg == null) unselectedBg = Color.DARK_GRAY;
+
+                // Optionally, check for hover state if you add mouse listeners.
+                // For now, simply paint based on selection.
+                g.setColor(isSelected ? selectedBg : unselectedBg);
                 g.fillRect(x, y, w, h);
             }
 
@@ -97,11 +103,13 @@ public class MediaStaffFrame extends JFrame {
                                      FontMetrics metrics, int tabIndex, String title,
                                      Rectangle textRect, boolean isSelected) {
                 g.setFont(font);
-                // White text for selected tab, black for unselected.
-                g.setColor(isSelected ? Color.WHITE : Color.BLACK);
+                Color selectedFg = UIManager.getColor("TabbedPane.selectedForeground");
+                Color unselectedFg = UIManager.getColor("TabbedPane.unselectedForeground");
+                if (selectedFg == null) selectedFg = Color.WHITE;
+                if (unselectedFg == null) unselectedFg = Color.BLACK;
+                g.setColor(isSelected ? selectedFg : unselectedFg);
                 g.drawString(title, textRect.x, textRect.y + metrics.getAscent());
             }
-
 
             @Override
             protected void paintFocusIndicator(Graphics g, int tabPlacement, Rectangle[] rects,
@@ -156,8 +164,6 @@ public class MediaStaffFrame extends JFrame {
         // Bottom panel with a log-out button.
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton logoutButton = new JButton("Log out");
-        logoutButton.setBackground(Color.DARK_GRAY);
-        logoutButton.setForeground(Color.WHITE);
         logoutButton.setPreferredSize(new Dimension(100, 30));
         logoutButton.setMaximumSize(new Dimension(100, 30));
         logoutButton.setFocusPainted(false);
@@ -486,17 +492,16 @@ public class MediaStaffFrame extends JFrame {
      */
     private JButton createMenuItem(String text, String iconPath) {
         JButton button = new JButton(text);
-        // Force a basic UI that respects our background color changes.
-        button.setUI(new BasicButtonUI());
+        // Let the button use the default Look and Feel ButtonUI.
+        // button.setUI(new BasicButtonUI());  // Ensure this line is removed.
 
         if (iconPath != null) {
-            button.setIcon(new ImageIcon(Objects.requireNonNull(getClass().getResource(iconPath))));
+            button.setIcon(new ImageIcon(getClass().getResource(iconPath)));
         }
 
         button.setAlignmentX(Component.CENTER_ALIGNMENT);
-        button.setPreferredSize(new Dimension(0,100));
-        button.setBackground(Color.DARK_GRAY);
-        button.setForeground(Color.WHITE);
+        button.setPreferredSize(new Dimension(150, 100));
+        button.setMaximumSize(new Dimension(Integer.MAX_VALUE, button.getPreferredSize().height));
         button.setFocusPainted(true);
         button.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
         button.setContentAreaFilled(true);
@@ -505,34 +510,6 @@ public class MediaStaffFrame extends JFrame {
         button.setBorderPainted(false);
         button.setVerticalTextPosition(SwingConstants.BOTTOM);
         button.setHorizontalTextPosition(SwingConstants.CENTER);
-
-        // Define colors for different states.
-        final Color defaultColor = Color.DARK_GRAY;
-        final Color hoverColor = new Color(64, 64, 64);    // slightly lighter grey
-        final Color pressedColor = new Color(96, 96, 96);   // even lighter grey for pressed state
-
-        button.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                button.setBackground(hoverColor);
-            }
-            @Override
-            public void mouseExited(MouseEvent e) {
-                button.setBackground(defaultColor);
-            }
-            @Override
-            public void mousePressed(MouseEvent e) {
-                button.setBackground(pressedColor);
-            }
-            @Override
-            public void mouseReleased(MouseEvent e) {
-                if (button.contains(e.getPoint())) {
-                    button.setBackground(hoverColor);
-                } else {
-                    button.setBackground(defaultColor);
-                }
-            }
-        });
         return button;
     }
 
@@ -640,56 +617,6 @@ public class MediaStaffFrame extends JFrame {
 
             JScrollPane scrollPane = new JScrollPane(table);
 
-            // Customised vertical scroll bar
-            scrollPane.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
-                @Override
-                protected void configureScrollBarColors() {
-                    this.thumbColor = Color.DARK_GRAY; // The draggable thumb.
-                    this.trackColor = Color.GRAY;      // The background track.
-                }
-
-                @Override
-                protected JButton createDecreaseButton(int orientation) {
-                    JButton button = super.createDecreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-
-                @Override
-                protected JButton createIncreaseButton(int orientation) {
-                    JButton button = super.createIncreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-            });
-
-            // Customised horizontal scroll bar.
-            scrollPane.getHorizontalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
-                @Override
-                protected void configureScrollBarColors() {
-                    this.thumbColor = Color.DARK_GRAY;
-                    this.trackColor = Color.GRAY;
-                }
-
-                @Override
-                protected JButton createDecreaseButton(int orientation) {
-                    JButton button = super.createDecreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-
-                @Override
-                protected JButton createIncreaseButton(int orientation) {
-                    JButton button = super.createIncreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-            });
-
             // Center text in some columns
             DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
             centerRenderer.setHorizontalAlignment(JLabel.CENTER);
@@ -729,56 +656,6 @@ public class MediaStaffFrame extends JFrame {
             table.getTableHeader().setFont(boldFont);
 
             JScrollPane scrollPane = new JScrollPane(table);
-
-            // Customised vertical scroll bar
-            scrollPane.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
-                @Override
-                protected void configureScrollBarColors() {
-                    this.thumbColor = Color.DARK_GRAY; // The draggable thumb.
-                    this.trackColor = Color.GRAY;      // The background track.
-                }
-
-                @Override
-                protected JButton createDecreaseButton(int orientation) {
-                    JButton button = super.createDecreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-
-                @Override
-                protected JButton createIncreaseButton(int orientation) {
-                    JButton button = super.createIncreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-            });
-
-            // Customised horizontal scroll bar.
-            scrollPane.getHorizontalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
-                @Override
-                protected void configureScrollBarColors() {
-                    this.thumbColor = Color.DARK_GRAY;
-                    this.trackColor = Color.GRAY;
-                }
-
-                @Override
-                protected JButton createDecreaseButton(int orientation) {
-                    JButton button = super.createDecreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-
-                @Override
-                protected JButton createIncreaseButton(int orientation) {
-                    JButton button = super.createIncreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-            });
 
             // Center text in some columns
             DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
@@ -820,56 +697,6 @@ public class MediaStaffFrame extends JFrame {
             table.getTableHeader().setFont(boldFont);
 
             JScrollPane scrollPane = new JScrollPane(table);
-
-            // Customised vertical scroll bar
-            scrollPane.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
-                @Override
-                protected void configureScrollBarColors() {
-                    this.thumbColor = Color.DARK_GRAY; // The draggable thumb.
-                    this.trackColor = Color.GRAY;      // The background track.
-                }
-
-                @Override
-                protected JButton createDecreaseButton(int orientation) {
-                    JButton button = super.createDecreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-
-                @Override
-                protected JButton createIncreaseButton(int orientation) {
-                    JButton button = super.createIncreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-            });
-
-            // Customised horizontal scroll bar.
-            scrollPane.getHorizontalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
-                @Override
-                protected void configureScrollBarColors() {
-                    this.thumbColor = Color.DARK_GRAY;
-                    this.trackColor = Color.GRAY;
-                }
-
-                @Override
-                protected JButton createDecreaseButton(int orientation) {
-                    JButton button = super.createDecreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-
-                @Override
-                protected JButton createIncreaseButton(int orientation) {
-                    JButton button = super.createIncreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-            });
 
             // Center text in some columns
             DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
@@ -997,55 +824,6 @@ public class MediaStaffFrame extends JFrame {
             table.getTableHeader().setFont(boldFont);
 
             JScrollPane scrollPane = new JScrollPane(table);
-            // Customised vertical scroll bar
-            scrollPane.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
-                @Override
-                protected void configureScrollBarColors() {
-                    this.thumbColor = Color.DARK_GRAY; // The draggable thumb.
-                    this.trackColor = Color.GRAY;      // The background track.
-                }
-
-                @Override
-                protected JButton createDecreaseButton(int orientation) {
-                    JButton button = super.createDecreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-
-                @Override
-                protected JButton createIncreaseButton(int orientation) {
-                    JButton button = super.createIncreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-            });
-
-            // Customised horizontal scroll bar.
-            scrollPane.getHorizontalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
-                @Override
-                protected void configureScrollBarColors() {
-                    this.thumbColor = Color.DARK_GRAY;
-                    this.trackColor = Color.GRAY;
-                }
-
-                @Override
-                protected JButton createDecreaseButton(int orientation) {
-                    JButton button = super.createDecreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-
-                @Override
-                protected JButton createIncreaseButton(int orientation) {
-                    JButton button = super.createIncreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-            });
 
             // Center text in some columns
             DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
@@ -1089,55 +867,6 @@ public class MediaStaffFrame extends JFrame {
             table.getTableHeader().setFont(boldFont);
 
             JScrollPane scrollPane = new JScrollPane(table);
-            // Customised vertical scroll bar
-            scrollPane.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
-                @Override
-                protected void configureScrollBarColors() {
-                    this.thumbColor = Color.DARK_GRAY; // The draggable thumb.
-                    this.trackColor = Color.GRAY;      // The background track.
-                }
-
-                @Override
-                protected JButton createDecreaseButton(int orientation) {
-                    JButton button = super.createDecreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-
-                @Override
-                protected JButton createIncreaseButton(int orientation) {
-                    JButton button = super.createIncreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-            });
-
-            // Customised horizontal scroll bar.
-            scrollPane.getHorizontalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
-                @Override
-                protected void configureScrollBarColors() {
-                    this.thumbColor = Color.DARK_GRAY;
-                    this.trackColor = Color.GRAY;
-                }
-
-                @Override
-                protected JButton createDecreaseButton(int orientation) {
-                    JButton button = super.createDecreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-
-                @Override
-                protected JButton createIncreaseButton(int orientation) {
-                    JButton button = super.createIncreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-            });
 
             // Center text in some columns
             DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
@@ -1186,59 +915,9 @@ public class MediaStaffFrame extends JFrame {
             table.getColumnModel().getColumn(5).setCellRenderer(centerRenderer);
 
             JScrollPane scrollPane = new JScrollPane(table);
-            // Customised vertical scroll bar
-            scrollPane.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
-                @Override
-                protected void configureScrollBarColors() {
-                    this.thumbColor = Color.DARK_GRAY; // The draggable thumb.
-                    this.trackColor = Color.GRAY;      // The background track.
-                }
 
-                @Override
-                protected JButton createDecreaseButton(int orientation) {
-                    JButton button = super.createDecreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-
-                @Override
-                protected JButton createIncreaseButton(int orientation) {
-                    JButton button = super.createIncreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-            });
-
-            // Customised horizontal scroll bar.
-            scrollPane.getHorizontalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
-                @Override
-                protected void configureScrollBarColors() {
-                    this.thumbColor = Color.DARK_GRAY;
-                    this.trackColor = Color.GRAY;
-                }
-
-                @Override
-                protected JButton createDecreaseButton(int orientation) {
-                    JButton button = super.createDecreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-
-                @Override
-                protected JButton createIncreaseButton(int orientation) {
-                    JButton button = super.createIncreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-            });
             updatePanel.add(scrollPane, BorderLayout.CENTER);
             JButton updateEquipmentButton = new JButton("Update Selected Equipment");
-            updateEquipmentButton.setBackground(Color.LIGHT_GRAY);
-            updateEquipmentButton.setForeground(Color.DARK_GRAY);
             updateEquipmentButton.setPreferredSize(new Dimension(30, 30));
             updateEquipmentButton.setMaximumSize(new Dimension(30, 30));
             updatePanel.add(updateEquipmentButton, BorderLayout.SOUTH);
@@ -1276,8 +955,6 @@ public class MediaStaffFrame extends JFrame {
                 comboBoxState.setSelectedItem(selectedEquipment.getState());
 
                 JButton updateEquipmentSubmitButton = new JButton("Update Equipment");
-                updateEquipmentSubmitButton.setBackground(Color.LIGHT_GRAY);
-                updateEquipmentSubmitButton.setForeground(Color.DARK_GRAY);
                 updateEquipmentSubmitButton.setPreferredSize(new Dimension(30, 30));
                 updateEquipmentSubmitButton.setMaximumSize(new Dimension(30, 30));
                 gridBagConstraints.gridx = 0;
@@ -1433,55 +1110,7 @@ public class MediaStaffFrame extends JFrame {
             table.setRowHeight(20);
             table.getTableHeader().setFont(boldFont);
             JScrollPane scrollPane = new JScrollPane(table);
-            // Customised vertical scroll bar
-            scrollPane.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
-                @Override
-                protected void configureScrollBarColors() {
-                    this.thumbColor = Color.DARK_GRAY; // The draggable thumb.
-                    this.trackColor = Color.GRAY;      // The background track.
-                }
 
-                @Override
-                protected JButton createDecreaseButton(int orientation) {
-                    JButton button = super.createDecreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-
-                @Override
-                protected JButton createIncreaseButton(int orientation) {
-                    JButton button = super.createIncreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-            });
-
-            // Customised horizontal scroll bar.
-            scrollPane.getHorizontalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
-                @Override
-                protected void configureScrollBarColors() {
-                    this.thumbColor = Color.DARK_GRAY;
-                    this.trackColor = Color.GRAY;
-                }
-
-                @Override
-                protected JButton createDecreaseButton(int orientation) {
-                    JButton button = super.createDecreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-
-                @Override
-                protected JButton createIncreaseButton(int orientation) {
-                    JButton button = super.createIncreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-            });
             // Center text in some columns
             DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
             centerRenderer.setHorizontalAlignment(JLabel.CENTER);
@@ -1492,8 +1121,6 @@ public class MediaStaffFrame extends JFrame {
 
             updatePanel.add(scrollPane, BorderLayout.CENTER);
             JButton updateRequestButton = new JButton("Update Selected Request");
-            updateRequestButton.setBackground(Color.LIGHT_GRAY);
-            updateRequestButton.setForeground(Color.DARK_GRAY);
             updateRequestButton.setPreferredSize(new Dimension(30, 30));
             updateRequestButton.setMaximumSize(new Dimension(30, 30));
             updatePanel.add(updateRequestButton, BorderLayout.SOUTH);
@@ -1546,8 +1173,6 @@ public class MediaStaffFrame extends JFrame {
                 comboBoxStatus.setSelectedItem(selectedReservation.getStatus());
 
                 JButton updateRequestSubmitButton = new JButton("Update Request");
-                updateRequestSubmitButton.setBackground(Color.LIGHT_GRAY);
-                updateRequestSubmitButton.setForeground(Color.DARK_GRAY);
                 updateRequestSubmitButton.setPreferredSize(new Dimension(30, 30));
                 updateRequestSubmitButton.setMaximumSize(new Dimension(30, 30));
                 gridBagConstraints.gridx = 0;
@@ -1648,61 +1273,10 @@ public class MediaStaffFrame extends JFrame {
             table.setRowHeight(20);
             table.getTableHeader().setFont(boldFont);
             JScrollPane scrollPane = new JScrollPane(table);
-            // Customised vertical scroll bar
-            scrollPane.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
-                @Override
-                protected void configureScrollBarColors() {
-                    this.thumbColor = Color.DARK_GRAY; // The draggable thumb.
-                    this.trackColor = Color.GRAY;      // The background track.
-                }
-
-                @Override
-                protected JButton createDecreaseButton(int orientation) {
-                    JButton button = super.createDecreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-
-                @Override
-                protected JButton createIncreaseButton(int orientation) {
-                    JButton button = super.createIncreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-            });
-
-            // Customised horizontal scroll bar.
-            scrollPane.getHorizontalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
-                @Override
-                protected void configureScrollBarColors() {
-                    this.thumbColor = Color.DARK_GRAY;
-                    this.trackColor = Color.GRAY;
-                }
-
-                @Override
-                protected JButton createDecreaseButton(int orientation) {
-                    JButton button = super.createDecreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-
-                @Override
-                protected JButton createIncreaseButton(int orientation) {
-                    JButton button = super.createIncreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-            });
             panel.add(scrollPane, BorderLayout.CENTER);
 
             // Create a Check-Out button.
             JButton checkOutButton = new JButton("Check Out Selected");
-            checkOutButton.setBackground(Color.LIGHT_GRAY);
-            checkOutButton.setForeground(Color.DARK_GRAY);
             checkOutButton.setPreferredSize(new Dimension(100, 30));
             panel.add(checkOutButton, BorderLayout.SOUTH);
 
@@ -1774,61 +1348,10 @@ public class MediaStaffFrame extends JFrame {
             table.setRowHeight(20);
             table.getTableHeader().setFont(boldFont);
             JScrollPane scrollPane = new JScrollPane(table);
-            // Customised vertical scroll bar
-            scrollPane.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
-                @Override
-                protected void configureScrollBarColors() {
-                    this.thumbColor = Color.DARK_GRAY; // The draggable thumb.
-                    this.trackColor = Color.GRAY;      // The background track.
-                }
-
-                @Override
-                protected JButton createDecreaseButton(int orientation) {
-                    JButton button = super.createDecreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-
-                @Override
-                protected JButton createIncreaseButton(int orientation) {
-                    JButton button = super.createIncreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-            });
-
-            // Customised horizontal scroll bar.
-            scrollPane.getHorizontalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
-                @Override
-                protected void configureScrollBarColors() {
-                    this.thumbColor = Color.DARK_GRAY;
-                    this.trackColor = Color.GRAY;
-                }
-
-                @Override
-                protected JButton createDecreaseButton(int orientation) {
-                    JButton button = super.createDecreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-
-                @Override
-                protected JButton createIncreaseButton(int orientation) {
-                    JButton button = super.createIncreaseButton(orientation);
-                    button.setBackground(Color.DARK_GRAY);
-                    button.setForeground(Color.WHITE);
-                    return button;
-                }
-            });
             panel.add(scrollPane, BorderLayout.CENTER);
 
             // Create a Check In button.
             JButton checkInButton = new JButton("Check In Selected");
-            checkInButton.setBackground(Color.LIGHT_GRAY);
-            checkInButton.setForeground(Color.DARK_GRAY);
             checkInButton.setPreferredSize(new Dimension(100, 30));
             panel.add(checkInButton, BorderLayout.SOUTH);
 

@@ -4,6 +4,7 @@ import com.formdev.flatlaf.FlatDarkLaf;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import java.awt.Color;
+import java.awt.Insets;
 /**
  * Main entry point for the Media Equipment Rental System GUI application.
  * <p>
@@ -24,8 +25,6 @@ public class MainGUI {
                 UIManager.put("TitlePane.foreground", Color.WHITE);
                 UIManager.put("TitlePane.activeBackground", new Color(0x435465));
                 UIManager.put("TitlePane.inactiveBackground", new Color(0x435465));
-
-                // Set the defaults for content components to have a white background and black text.
                 UIManager.put("Panel.background", Color.WHITE);
                 UIManager.put("Label.foreground", Color.BLACK);
                 UIManager.put("TextField.background", Color.WHITE);
@@ -45,6 +44,19 @@ public class MainGUI {
                 UIManager.put("ComboBox.foreground", Color.BLACK);
                 UIManager.put("ComboBox.selectionBackground", new Color(0xDDDDDD));
                 UIManager.put("ComboBox.selectionForeground", Color.BLACK);
+                UIManager.put("ScrollBar.thumb", Color.DARK_GRAY);
+                UIManager.put("ScrollBar.track", Color.GRAY);
+                UIManager.put("Button.background", Color.DARK_GRAY);
+                UIManager.put("Button.foreground", Color.WHITE);
+                UIManager.put("Button.hoverBackground", new Color(120, 120, 120));
+                UIManager.put("Button.pressedBackground", new Color(120, 120, 120));
+                UIManager.put("TabbedPane.selectedBackground", new Color(96,96,96)); // your desired dark color
+                UIManager.put("TabbedPane.unselectedBackground", Color.DARK_GRAY);
+                UIManager.put("TabbedPane.selectedForeground", Color.WHITE);
+                UIManager.put("TabbedPane.unselectedForeground", Color.WHITE);
+                UIManager.put("TabbedPane.hoverBackground", new Color(120, 120, 120));
+                UIManager.put("TabbedPane.contentBorderInsets", new Insets(0, 0, 0, 0));
+
             } catch (Exception ex) {
                 System.err.println("Failed to initialize Look and Feel: " + ex.getMessage());
             }
