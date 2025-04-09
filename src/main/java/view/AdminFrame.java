@@ -700,7 +700,7 @@ public class AdminFrame extends JFrame {
             // Get full list of departments from MethodsUtil.
             final String[] departments = controller.MethodsUtil.getDepartments();
             // Holder for the Year text field (if needed).
-            final JTextField[] yearFieldHolder = new JTextField[1];
+            final JComboBox<String>[] yearFieldHolder = new JComboBox[1];
 
             // Runnable to update extraPanel based on selected role.
             Runnable updateExtraPanel = () -> {
@@ -814,17 +814,12 @@ public class AdminFrame extends JFrame {
                         newUser.setCourse(course);
                         // Retrieve and validate the year.
                         if (yearFieldHolder[0] != null) {
-                            String yearStr = yearFieldHolder[0].getText().trim();
-                            if (!yearStr.isEmpty()) {
-                                try {
-                                    int year = Integer.parseInt(yearStr);
-                                    newUser.setYear(year);
-                                } catch (NumberFormatException ex) {
-                                    JOptionPane.showMessageDialog(this, "Invalid year entered.", "Error", JOptionPane.ERROR_MESSAGE);
-                                    return;
-                                }
-                            } else {
-                                JOptionPane.showMessageDialog(this, "Year must be filled for a student.", "Error", JOptionPane.ERROR_MESSAGE);
+                            String yearStr = (String) yearFieldHolder[0].getSelectedItem();
+                            try {
+                                int year = Integer.parseInt(yearStr);
+                                newUser.setYear(year);
+                            } catch (NumberFormatException ex) {
+                                JOptionPane.showMessageDialog(this, "Invalid year selected", "Error", JOptionPane.ERROR_MESSAGE);
                                 return;
                             }
                         }
