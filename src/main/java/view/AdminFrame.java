@@ -740,13 +740,14 @@ public class AdminFrame extends JFrame {
 
                     // Add Year field.
                     JLabel labelYear = new JLabel("Year:");
-                    JTextField textFieldYear = new JTextField(5);
-                    yearFieldHolder[0] = textFieldYear;
+                    String[] years = {"1", "2", "3", "4"};
+                    JComboBox<String> comboBoxYear = new JComboBox<>(years);
+                    comboBoxYear.setSelectedItem("1"); // default to "1" or adjust as needed
                     gridBagConstraintExtra.gridx = 0;
                     gridBagConstraintExtra.gridy = 2;
                     extraPanel.add(labelYear, gridBagConstraintExtra);
                     gridBagConstraintExtra.gridx = 1;
-                    extraPanel.add(textFieldYear, gridBagConstraintExtra);
+                    extraPanel.add(comboBoxYear, gridBagConstraintExtra);
                 } else if ("Lecturer".equalsIgnoreCase(selectedRole)) {
                     // For Lecturer, add only Department.
                     JLabel labelDept = new JLabel("Department:");
@@ -1609,8 +1610,10 @@ public class AdminFrame extends JFrame {
                 }
             };
             for (Equipment equipment : equipments) {
+                if("Available".equalsIgnoreCase(equipment.getStatus())){
                 Object[] row = { equipment.getEquipmentId(), equipment.getName(), equipment.getType(), equipment.getDescription(), equipment.getStatus(), equipment.getState() };
                 model.addRow(row);
+                }
             }
             final JTable table = new JTable(model);
             table.setFont(bigFont);
