@@ -731,7 +731,7 @@ public class AdminFrame extends JFrame {
                     gridBagConstraintExtra.gridx = 1;
                     extraPanel.add(cbCourse, gridBagConstraintExtra);
 
-                    // Add listener to update courses when department changes.
+                    // Listener to update courses when department changes.
                     comboBoxDept.addActionListener(e -> {
                         String dept = (String) comboBoxDept.getSelectedItem();
                         String[] newCourses = controller.MethodsUtil.getCoursesForDepartment(dept);
@@ -743,6 +743,10 @@ public class AdminFrame extends JFrame {
                     String[] years = {"1", "2", "3", "4"};
                     JComboBox<String> comboBoxYear = new JComboBox<>(years);
                     comboBoxYear.setSelectedItem("1"); // default to "1" or adjust as needed
+
+                    // **Store the comboBoxYear into the holder so that its value can be retrieved later**
+                    yearFieldHolder[0] = comboBoxYear;
+
                     gridBagConstraintExtra.gridx = 0;
                     gridBagConstraintExtra.gridy = 2;
                     extraPanel.add(labelYear, gridBagConstraintExtra);
@@ -761,6 +765,7 @@ public class AdminFrame extends JFrame {
                 extraPanel.revalidate();
                 extraPanel.repaint();
             };
+
 
             // Initial update.
             updateExtraPanel.run();
