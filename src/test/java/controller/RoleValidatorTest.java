@@ -3,7 +3,13 @@ package controller;
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 import exception.RoleAccessException;
-
+/**
+ * Unit tests for the RoleValidator class.
+ *
+ * <p>
+ * These tests ensure that valid roles pass validation while invalid roles trigger a RoleAccessException.
+ * </p>
+ */
 public class RoleValidatorTest {
 
     @Test

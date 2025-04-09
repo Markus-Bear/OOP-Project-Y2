@@ -3,7 +3,14 @@ package controller;
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 import exception.InvalidInputException;
-
+/**
+ * Unit tests for the InputValidator class.
+ *
+ * <p>
+ * These tests verify that valid inputs pass the validation and that invalid inputs
+ * throw an InvalidInputException with an appropriate message.
+ * </p>
+ */
 public class InputValidatorTest {
 
     @Test
