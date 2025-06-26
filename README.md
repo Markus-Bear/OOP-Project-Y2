@@ -68,10 +68,9 @@ MEMS is a Java application for managing media equipment (cameras, projectors, mi
 🔍 Audit trails for reservations/maintenance
 
 ## Documentation Includes
-- ER Diagram
-- Database table designs
-- Code snippets
-- Test plans
+- Database table designs/ Code snippets/ Unit Tests
+- Use Case Diagram [📁 UseCaseDiagramFinal.png](Documentation/UseCaseDiagramFinal.png)
+- Class Diagram [📁 ClassDiagramFinal.jpg](Documentation/ClassDiagramFinal.jpg)
 
 ## Author
 Markus Mukiiza C00166672 
