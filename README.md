@@ -45,6 +45,10 @@ MEMS is a Java application for managing media equipment (cameras, projectors, mi
 | **Frontend**   | Java Swing                 |
 | **Tools**      | NetBeans IDE, Git          |
 
+## Additional Notes
+- First Semester Documentation from System Analysis, Design & Testing. Includes Class/UseCase and Sequence Diagrams and initial Project Spec.  [📁 2024 Documentation](Documentation/2024-Documentation(September-December)/)
+- Second Semester Documentation. Includes final Project Documentation and Project API.  [📁 2025 Documentation](Documentation/2025-Documentation(January-May)/)
+
 ## How to Run
 ### Prerequisites
 - JDK 17+
@@ -66,11 +70,6 @@ MEMS is a Java application for managing media equipment (cameras, projectors, mi
 ✉️ Email notifications for overdue returns
 
 🔍 Audit trails for reservations/maintenance
-
-## Documentation Includes
-- Database table designs/ Code snippets/ Unit Tests
-- Use Case Diagram [📁 UseCaseDiagramFinal.png](Documentation/UseCaseDiagramFinal.png)
-- Class Diagram [📁 ClassDiagramFinal.jpg](Documentation/ClassDiagramFinal.jpg)
 
 ## Author
 Markus Mukiiza C00166672 
